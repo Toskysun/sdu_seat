@@ -1,0 +1,30 @@
+{
+  "userid": "202500001001",
+  "passwd": "Chsya9",
+  "deviceId": "464ab241e9a1c1e9",
+  "area": "趵突泉馆-一楼",
+  "seats": {
+    "趵突泉阅览室112": ["11","12","13", "06","07","08","10","14","05","09"],
+    "趵突泉专业阅览室104": ["11","08","14"]
+  },
+  "filterRule": "",
+  "only": true,
+  "time": "12:29:57",
+  "period": "08:00-22:30",
+  "retry": 3,
+  "retryInterval": 3,
+  "delta": 1,
+  "bookOnce": false,
+  "webVpn": false,
+  "earlyLoginMinutes": 5,
+  "maxLoginAttempts": 50,
+  "emailNotification": {
+    "enable": true,
+    "smtpHost": "smtp.qq.com",
+    "smtpPort": 465,
+    "username": "12345678@qq.com",
+    "password": "66666666",
+    "recipientEmail": "sss@163.com",
+    "sslEnable": true
+  }
+}
