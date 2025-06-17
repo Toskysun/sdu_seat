@@ -1,7 +1,0 @@
-Manifest-Version: 1.0
-Main-Class: sduseat.Main
-Implementation-Title: Sdu-Seat
-Implementation-Version: 1.0
-Built-By: User
-Built-Date: 2025-06-16 22:03:00
-Built-JDK: 23.0.1 
