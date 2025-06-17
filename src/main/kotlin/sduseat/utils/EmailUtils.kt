@@ -132,8 +132,8 @@ object EmailUtils {
                 
                 // 找到一行的开始
                 if (c == '\n' || c == '\r' || pointer == 0) {
-                    if (pointer != fileLength - 1) { // 不是文件的最后一个字符
-                        randomAccessFile.seek(if (pointer == 0) 0 else pointer + 1)
+                    if (pointer != fileLength - 1L) { // 不是文件的最后一个字符
+                        randomAccessFile.seek(if (pointer == 0L) 0L else pointer + 1)
                         val line = randomAccessFile.readLine()
                         
                         // 如果只需要错误日志且当前行包含错误信息，或者不限制日志类型
