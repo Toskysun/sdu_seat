@@ -1,0 +1,185 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'java'
+}
+
+group = 'sduseat'
+version = '1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+    maven { 
+        url = uri("https://jitpack.io")
+        content {
+            includeGroup "com.github"
+        }
+    }
+}
+
+ext {
+    versions = [
+        kotlin: '1.9.24',
+        okhttp: '4.12.0',
+        gson: '2.10.1',
+        kotlinLogging: '3.0.5',
+        slf4j: '2.0.12',
+        jsoup: '1.17.2',
+        rhino: '1.7.14',
+        junit: '5.10.2',
+        metrics: '4.2.25'
+    ]
+}
+
+// 构建可执行 jar 包，运行依赖jar内容会直接打到 jar 里面
+tasks.shadowJar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    manifest {
+        attributes(
+            'Main-Class': 'sduseat.Main',
+            'Implementation-Title': 'Sdu-Seat',
+            'Implementation-Version': project.version,
+            'Built-By': System.getProperty('user.name'),
+            'Built-Date': new Date().format("yyyy-MM-dd HH:mm:ss"),
+            'Built-JDK': System.getProperty('java.version')
+        )
+    }
+    archiveClassifier = ''
+
+    // 将 build.gradle 打入到 jar 中, 方便查看依赖包版本
+    from("./") { 
+        include 'build.gradle'
+        filePermissions {
+            user {
+                read = true
+                write = true
+            }
+            group {
+                read = true
+            }
+            other {
+                read = true
+            }
+        }
+    }
+    
+    // 优化：合并服务文件
+    mergeServiceFiles()
+    
+    // 优化：排除签名文件
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    
+    // 设置文件权限
+    preserveFileTimestamps = true
+    reproducibleFileOrder = true
+    
+    // 设置目录权限
+    dirPermissions {
+        user {
+            read = true
+            write = true
+            execute = true
+        }
+        group {
+            read = true
+            execute = true
+        }
+        other {
+            read = true
+            execute = true
+        }
+    }
+    
+    // 设置文件权限
+    filePermissions {
+        user {
+            read = true
+            write = true
+        }
+        group {
+            read = true
+        }
+        other {
+            read = true
+        }
+    }
+}
+
+// 配置标准jar任务
+tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    
+    manifest {
+        attributes(
+            'Main-Class': 'sduseat.Main',
+            'Implementation-Title': 'Sdu-Seat',
+            'Implementation-Version': project.version,
+            'Built-By': System.getProperty('user.name'),
+            'Built-Date': new Date().format("yyyy-MM-dd HH:mm:ss"),
+            'Built-JDK': System.getProperty('java.version')
+        )
+    }
+    
+    // 确保生成的jar包包含源代码
+    from sourceSets.main.allSource
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:${versions.kotlin}"
+    
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${versions.junit}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${versions.junit}"
+
+    //Okhttp
+    implementation "com.squareup.okhttp3:okhttp:${versions.okhttp}"
+    //gson
+    implementation "com.google.code.gson:gson:${versions.gson}"
+    //logger
+    implementation "io.github.microutils:kotlin-logging-jvm:${versions.kotlinLogging}"
+    implementation "org.slf4j:slf4j-log4j12:${versions.slf4j}"
+    //Jsoup
+    implementation "org.jsoup:jsoup:${versions.jsoup}"
+    //rhino
+    implementation "org.mozilla:rhino:${versions.rhino}"
+    implementation "org.mozilla:rhino-engine:${versions.rhino}"
+    
+    // Metrics
+    implementation "io.dropwizard.metrics:metrics-core:${versions.metrics}"
+    implementation "io.dropwizard.metrics:metrics-jvm:${versions.metrics}"
+    
+    // Email
+    implementation "com.sun.mail:jakarta.mail:2.0.1"
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+        freeCompilerArgs += ['-Xjsr305=strict']
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
+
+// 添加源代码编码设置
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// 添加Javadoc编码设置
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+}

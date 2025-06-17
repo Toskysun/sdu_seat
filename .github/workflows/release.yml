@@ -1,0 +1,172 @@
+name: Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送带v前缀的标签时触发
+  workflow_dispatch:  # 允许手动触发工作流
+    inputs:
+      custom_tag:
+        description: '自定义标签名称 (例如: v1.0.0)'
+        required: false
+        type: string
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.5'
+      
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version=8.5
+      
+      - name: Set release version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            if [[ -n "${{ github.event.inputs.custom_tag }}" ]]; then
+              echo "RELEASE_VERSION=${{ github.event.inputs.custom_tag }}" >> $GITHUB_ENV
+              echo "CUSTOM_TAG=${{ github.event.inputs.custom_tag }}" >> $GITHUB_ENV
+            else
+              echo "RELEASE_VERSION=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+            fi
+          fi
+      
+      - name: Update project version with tag
+        run: |
+          # 从 RELEASE_VERSION 中移除 'v' 前缀（如果存在）
+          VERSION="${RELEASE_VERSION#v}"
+          # 使用 sed 更新 build.gradle 中的版本号
+          sed -i "s/^version = .*/version = '$VERSION'/g" build.gradle
+          # 更新 banner.txt 中的版本号
+          sed -i "s/:: Sdu-Seat v[0-9.]\+ ::/:: Sdu-Seat v$VERSION ::/g" src/main/resources/banner.txt
+          echo "已将项目版本号更新为: $VERSION"
+      
+      - name: Build with Gradle
+        run: ./gradlew clean shadowJar
+      
+      - name: Create Release Directories
+        run: |
+          mkdir -p release/windows
+          mkdir -p release/linux
+          mkdir -p release/macos
+      
+      - name: Create Windows Package
+        run: |
+          cp build/libs/sdu-seat-*.jar release/windows/
+          cp README.md release/windows/ || echo "README.md not found, skipping"
+          cp LICENSE release/windows/ || echo "LICENSE not found, skipping"
+          cp config/config.example.json release/windows/config.json || echo "config.example.json not found, skipping"
+          echo '@echo off' > release/windows/run.bat
+          echo 'java -jar sdu-seat-*.jar %*' >> release/windows/run.bat
+          echo 'pause' >> release/windows/run.bat
+          cd release
+          zip -r Sdu-Seat-Windows-${RELEASE_VERSION}.zip windows/
+      
+      - name: Create Linux Package
+        run: |
+          cp build/libs/sdu-seat-*.jar release/linux/
+          cp README.md release/linux/ || echo "README.md not found, skipping"
+          cp LICENSE release/linux/ || echo "LICENSE not found, skipping"
+          cp config/config.example.json release/linux/config.json || echo "config.example.json not found, skipping"
+          echo '#!/bin/bash' > release/linux/run.sh
+          echo 'java -jar sdu-seat-*.jar "$@"' >> release/linux/run.sh
+          chmod +x release/linux/run.sh
+          cd release
+          tar -czvf Sdu-Seat-Linux-${RELEASE_VERSION}.tar.gz linux/
+      
+      - name: Create macOS Package
+        run: |
+          cp build/libs/sdu-seat-*.jar release/macos/
+          cp README.md release/macos/ || echo "README.md not found, skipping"
+          cp LICENSE release/macos/ || echo "LICENSE not found, skipping"
+          cp config/config.example.json release/macos/config.json || echo "config.example.json not found, skipping"
+          echo '#!/bin/bash' > release/macos/run.sh
+          echo 'java -jar sdu-seat-*.jar "$@"' >> release/macos/run.sh
+          chmod +x release/macos/run.sh
+          cd release
+          tar -czvf Sdu-Seat-macOS-${RELEASE_VERSION}.tar.gz macos/
+      
+      - name: Create Example Config
+        run: |
+          mkdir -p release/config
+          echo '{
+            "userid": "",
+            "passwd": "",
+            "deviceId": "",
+            "area": "",
+            "seats": {},
+            "filterRule": "",
+            "only": false,
+            "time": "06:02",
+            "period": "08:00-22:30",
+            "retry": 10,
+            "retryInterval": 2,
+            "delta": 0,
+            "bookOnce": false,
+            "webVpn": false,
+            "maxLoginAttempts": 50,
+            "earlyLoginMinutes": 5,
+            "emailNotification": {
+              "enable": false,
+              "smtpHost": "",
+              "smtpPort": 465,
+              "username": "",
+              "password": "",
+              "recipientEmail": "",
+              "sslEnable": true
+            }
+          }' > release/config/config.example.json
+          cd release
+          zip -r Sdu-Seat-Config-Example-${RELEASE_VERSION}.zip config/
+      
+      - name: Create tag for non-tag builds
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag == '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "release-${RELEASE_VERSION}"
+          git push origin "release-${RELEASE_VERSION}"
+      
+      - name: Create custom tag
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ env.CUSTOM_TAG }}"
+          git push origin "${{ env.CUSTOM_TAG }}"
+      
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && env.RELEASE_VERSION || (github.event.inputs.custom_tag != '' && env.CUSTOM_TAG || format('release-{0}', env.RELEASE_VERSION)) }}
+          name: Release ${{ env.RELEASE_VERSION }}
+          draft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag == '' }}
+          files: |
+            release/*.zip
+            release/*.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
