@@ -217,8 +217,11 @@ fun startBook() {
             }
             
             // 检查是否是所有座位均无法预约的情况，如果是则不再重试
-            if (e.message?.contains("所有座位均无法预约") == true || e.message?.contains("部分时段预约失败") == true) {
-                logger.error { "预约失败：${e.message}" }
+            if (e.message?.contains("所有预设座位均不可预约") == true || 
+                e.message?.contains("区域内所有座位均不可预约") == true || 
+                e.message?.contains("部分时段预约失败") == true ||
+                e.message?.contains("预约失败：所有尝试均失败") == true) {
+                logger.error { "预约失败：${e.message}，停止尝试预约" }
                 break
             }
             
