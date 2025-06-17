@@ -242,31 +242,21 @@ fun startBook() {
     
     // 如果所有尝试都失败，发送邮件通知
     if (allAttemptsFailed) {
-        val actualAttempts = config!!.retry + 1
-        logger.error { "所有预约尝试均失败，共尝试了${actualAttempts}次，将发送邮件通知" }
+        logger.error { "所有预约尝试均失败，将发送邮件通知" }
         config!!.emailNotification?.let { emailConfig ->
             val subject = "图书馆座位预约失败通知"
-            
-            // 获取最近的日志内容
-            val recentLogs = sduseat.utils.EmailUtils.getRecentLogs(200, true)
-            
             val content = """
                 |预约失败！
                 |日期：$date
                 |
-                |失败详情：
-                |共尝试了${actualAttempts}次预约，但均失败。
+                |失败原因：
+                |尝试了${config!!.retry + 1}次预约，但均失败。
                 |
                 |可能的原因：
                 |1. 所有座位均不可预约，可能是预约时间未到或预约已结束
                 |2. 如果设置了只预约预设座位，可以考虑关闭"只预约预设座位"选项
                 |3. 如果遇到访问频繁，请稍后再试
                 |4. 如果问题持续存在，请尝试手动预约或检查配置
-                |
-                |执行日志（最近200行）：
-                |```
-                |$recentLogs
-                |```
             """.trimMargin()
             
             sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
@@ -428,10 +418,6 @@ fun bookTask() {
         // 发送一个详细的汇总邮件
             config!!.emailNotification?.let { emailConfig ->
             val subject = "图书馆座位预约失败通知"
-                
-                // 获取最近的日志内容
-                val recentLogs = sduseat.utils.EmailUtils.getRecentLogs(200, true)
-                
                 val content = """
                 |预约失败！
                     |日期：$date
@@ -444,11 +430,6 @@ fun bookTask() {
                 |2. 如果只有预设座位不可预约，可以考虑关闭"只预约预设座位"选项
                 |3. 如果遇到访问频繁，请稍后再试
                 |4. 如果问题持续存在，请尝试手动预约或联系管理员处理
-                |
-                |执行日志（最近200行）：
-                |```
-                |$recentLogs
-                |```
                 """.trimMargin()
                 
                 sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
@@ -691,10 +672,6 @@ fun startEarlyLogin(bookTime: Date) {
         // 发送登录失败邮件通知
         config!!.emailNotification?.let { emailConfig ->
             val subject = "图书馆座位预约系统登录失败通知"
-            
-            // 获取最近的日志内容
-            val recentLogs = sduseat.utils.EmailUtils.getRecentLogs(200, true)
-            
             val content = """
                 |提前登录失败！
                 |尝试次数：$attemptCount/${config!!.maxLoginAttempts}
@@ -704,11 +681,6 @@ fun startEarlyLogin(bookTime: Date) {
                 |${loginErrors.joinToString("\n|")}
                 |
                 |系统将在预约时间重新尝试登录。
-                |
-                |执行日志（最近200行）：
-                |```
-                |$recentLogs
-                |```
             """.trimMargin()
             
             sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
