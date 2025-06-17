@@ -219,153 +219,207 @@ fun startBook() {
 
 fun bookTask() {
     loginAndGetSeats()
-    val bookSeatTasks = mutableListOf<Future<*>>()
-    periods.keys.forEach {
-        if (!success[it]!!) {
-            bookSeatTasks.add(threadPool.submit {
-                val periodTime = "${periods[it]!!.startTime}-${periods[it]!!.endTime}"
-                var curSuccess = bookSeat(querySeats[it]!!, it, needFilter = false)
-                if (curSuccess) return@submit
-                if (!config!!.only) {
-                    logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
-                    curSuccess = bookSeat(allSeats[it]!!, it)
+    
+    // 改为串行处理预约，避免并发请求导致访问频繁问题
+    for (periodKey in periods.keys) {
+        if (!success[periodKey]!!) {
+            try {
+                val periodTime = "${periods[periodKey]!!.startTime}-${periods[periodKey]!!.endTime}"
+                logger.info { "开始预约${date} ${periodTime}时间段座位" }
+                
+                // 首先，检查预设座位中哪些是可预约的
+                val availablePreferredSeats = querySeats[periodKey]!!.filter { it.status == 1 }
+                logger.info { "时间段${periodTime}有${availablePreferredSeats.size}个预设座位可预约" }
+                
+                // 记录尝试详情，用于失败邮件
+                val attemptDetails = mutableListOf<String>()
+                
+                // 记录不可用的预设座位信息
+                querySeats[periodKey]!!.filter { it.status != 1 }.forEach { seat ->
+                    attemptDetails.add("预设座位 ${seat.area.name}-${seat.name} 状态为 ${getSeatStatusDescription(seat.status)}")
                 }
-                success[it] = curSuccess
+                
+                var curSuccess = false
+                
+                if (availablePreferredSeats.isNotEmpty()) {
+                    // 只尝试预约第一个可用的预设座位
+                    val seatToBook = availablePreferredSeats.first()
+                    logger.info { "尝试预约座位: ${seatToBook.area.name}-${seatToBook.name}" }
+                    curSuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
+                    if (!curSuccess) {
+                        attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
+                    }
+                } else if (!config!!.only) {
+                    // 如果没有可用的预设座位，获取所有可用座位
+                    logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
+                    val availableSeats = allSeats[periodKey]!!.filter { it.status == 1 }
+                    
+                    if (availableSeats.isNotEmpty()) {
+                        // 只尝试预约第一个可用的座位
+                        val seatToBook = availableSeats.first()
+                        logger.info { "尝试预约座位: ${seatToBook.area.name}-${seatToBook.name}" }
+                        curSuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
+                        if (!curSuccess) {
+                            attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
+                        }
+                    } else {
+                        logger.info { "时间段${periodTime}没有可用座位" }
+                        attemptDetails.add("区域内没有可用座位")
+                    }
+                } else {
+                    attemptDetails.add("没有可用的预设座位，且设置了只预约预设座位")
+                }
+                
+                success[periodKey] = curSuccess
+                
                 if (!curSuccess) {
                     val errorMsg = "预约${periodTime}时间段座位：所有座位均无法预约，预约失败"
-                    // 发送预约失败邮件通知
+                    // 发送预约失败邮件通知，包含详细信息
                     config!!.emailNotification?.let { emailConfig ->
-                        val subject = "图书馆座位预约失败通知"
+                        val subject = "图书馆座位预约详细失败通知"
                         val content = """
-                            |预约失败！
+                            |预约失败详细信息
                             |日期：$date
                             |时间段：$periodTime
-                            |失败原因：所有座位均无法预约
                             |
+                            |尝试详情：
+                            |${attemptDetails.joinToString("\n|")}
+                            |
+                            |总结：无法成功预约座位。
                             |请尝试手动预约或联系管理员处理。
                         """.trimMargin()
                         
                         sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
                     }
-                    throw LibException(errorMsg)
+                    logger.error { errorMsg }
                 }
-            })
-        }
-    }
-    var hasFailed = false
-    val failureMessages = mutableListOf<String>()
-    bookSeatTasks.forEach {
-        try {
-            it.get()
-        } catch (e: Exception) {
-            if (e.cause is LibException) {
-                logger.error() { e.message }
-                e.message?.let { msg -> failureMessages.add(msg) }
-            } else {
-                logger.error(e) { }
-                failureMessages.add("发生异常: ${e.message ?: "未知错误"}")
-            }
-            hasFailed = true
-        }
-    }
-    if (hasFailed) {
-        // 如果存在多个时间段的失败，发送一个汇总邮件
-        if (failureMessages.size > 1) {
-            config!!.emailNotification?.let { emailConfig ->
-                val subject = "图书馆座位预约失败汇总通知"
-                val content = """
-                    |预约失败汇总！
-                    |日期：$date
-                    |
-                    |失败详情：
-                    |${failureMessages.joinToString("\n|")}
-                    |
-                    |请尝试手动预约或联系管理员处理。
-                """.trimMargin()
+            } catch (e: Exception) {
+                logger.error(e) { "预约时段 ${periods[periodKey]!!.startTime}-${periods[periodKey]!!.endTime} 时发生异常" }
                 
-                sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
+                // 检查是否是访问频繁异常
+                if (e.message?.contains("访问频繁") == true) {
+                    val timePattern = "请(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})后重试".toRegex()
+                    val matchResult = timePattern.find(e.message!!)
+                    if (matchResult != null) {
+                        val waitTime = matchResult.groupValues[1]
+                        try {
+                            val waitUntil = sduseat.constant.Const.timeDateFormat.parse(waitTime).time
+                            val now = System.currentTimeMillis()
+                            val delayMs = if (waitUntil > now) waitUntil - now + 1000 else 60000
+                            
+                            logger.info { "检测到访问频繁限制，等待${delayMs / 1000}秒后继续（${waitTime}）" }
+                            Thread.sleep(delayMs)
+                            
+                            // 重试当前时段的预约，但只尝试一个座位
+                            val periodTime = "${periods[periodKey]!!.startTime}-${periods[periodKey]!!.endTime}"
+                            logger.info { "重新尝试预约${date} ${periodTime}时间段座位" }
+                            
+                            // 获取可用座位
+                            val availableSeats = querySeats[periodKey]!!.filter { it.status == 1 }
+                            if (availableSeats.isNotEmpty()) {
+                                val seatToBook = availableSeats.first()
+                                val retrySuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
+                                success[periodKey] = retrySuccess
+                            }
+                        } catch (parseEx: Exception) {
+                            logger.error(parseEx) { "解析访问频繁时间失败" }
+                        }
+                    } else {
+                        // 如果无法解析具体时间，等待1分钟后继续
+                        logger.info { "检测到访问频繁限制，等待60秒后继续" }
+                        Thread.sleep(60000)
+                    }
+                }
             }
+            
+            // 在每个时段预约之间添加短暂延迟，避免触发访问频繁限制
+            Thread.sleep(3000)
         }
-        throw LibException("")
     }
+    
+    // 检查是否有预约失败的情况
+    val failedPeriods = periods.keys.filter { !success[it]!! }
+    if (failedPeriods.isNotEmpty()) {
+        val failureMessages = failedPeriods.map { 
+            "时间段：${periods[it]!!.startTime}-${periods[it]!!.endTime}" 
+        }
+        
+        // 如果存在多个时间段的失败，发送一个汇总邮件
+        config!!.emailNotification?.let { emailConfig ->
+            val subject = "图书馆座位预约失败汇总通知"
+            val content = """
+                |预约失败汇总！
+                |日期：$date
+                |
+                |失败详情：
+                |${failureMessages.joinToString("\n|")}
+                |
+                |请尝试手动预约或联系管理员处理。
+            """.trimMargin()
+            
+            sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
+        }
+        
+        throw LibException("部分时段预约失败")
+    }
+    
     clear()
 }
 
-fun bookSeat(
-    seats: List<SeatBean>,
-    periodIndex: Int = 0,
-    periodTime: String = "08:00-22:30",
-    needFilter: Boolean = true
+/**
+ * 预约单个座位
+ */
+fun bookSingleSeat(
+    seat: SeatBean,
+    periodIndex: Int,
+    periodTime: String
 ): Boolean {
-    var success = false
-    var mySeats = seats
-    if (needFilter && !config!!.filterRule.isNullOrEmpty()) {
-        try {
-            mySeats = JsUtils.filterSeats(config!!.filterRule!!, seats)
-        } catch (e: Exception) {
-            logger.error(e) { "过滤座位时出错，将使用原座位进行预约" }
+    // 在请求之前添加短暂延迟，避免触发访问频繁限制
+    Thread.sleep(1000)
+    
+    val res = Lib.book(seat, date, auth!!, periodIndex, config!!.retry)
+    
+    // 检查是否返回访问频繁的信息
+    if (Lib.lastResponseMessage?.contains("访问频繁") == true) {
+        val timePattern = "请(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})后重试".toRegex()
+        val matchResult = timePattern.find(Lib.lastResponseMessage!!)
+        if (matchResult != null) {
+            val frequentAccessTime = matchResult.groupValues[1]
+            // 抛出异常，让上层处理
+            throw LibException("访问频繁！${Lib.lastResponseMessage}")
         }
     }
     
-    // 记录预约尝试的详细信息
-    val attemptDetails = mutableListOf<String>()
-    
-    for (seat in mySeats) {
-        if (seat.status == 1) {
-            val res = Lib.book(seat, date, auth!!, periodIndex, config!!.retry)
-            if (res == 3) {
-                attemptDetails.add("座位 ${seat.area.name}-${seat.name} 当前状态无法预约")
-                continue // 尝试下一个座位，而不是立即抛出异常
-            } else if (res == 2) {
-                needReLogin = true
-                attemptDetails.add("座位 ${seat.area.name}-${seat.name} 需要重新登录")
-            }
-            success = res == 1
-            
-            if (success) {
-                // 发送邮件通知
-                config!!.emailNotification?.let { emailConfig ->
-                    val subject = "图书馆座位预约成功通知"
-                    val content = """
-                        |预约成功！
-                        |日期：$date
-                        |时间段：$periodTime
-                        |区域：${seat.area.name}
-                        |座位号：${seat.name}
-                        |
-                        |祝您学习愉快！
-                    """.trimMargin()
-                    
-                    sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
-                }
-                return true
-            }
-        } else {
-            attemptDetails.add("座位 ${seat.area.name}-${seat.name} 状态为 ${getSeatStatusDescription(seat.status)}")
-        }
+    if (res == 3) {
+        logger.info { "座位 ${seat.area.name}-${seat.name} 当前状态无法预约" }
+        return false
+    } else if (res == 2) {
+        needReLogin = true
+        logger.info { "座位 ${seat.area.name}-${seat.name} 需要重新登录" }
+        return false
     }
     
-    // 如果所有座位都尝试失败，发送详细的失败邮件
-    if (!success && attemptDetails.isNotEmpty()) {
+    val success = res == 1
+    
+    if (success) {
+        // 发送邮件通知
         config!!.emailNotification?.let { emailConfig ->
-            val subject = "图书馆座位预约详细失败通知"
+            val subject = "图书馆座位预约成功通知"
             val content = """
-                |预约失败详细信息
+                |预约成功！
                 |日期：$date
                 |时间段：$periodTime
+                |区域：${seat.area.name}
+                |座位号：${seat.name}
                 |
-                |尝试详情：
-                |${attemptDetails.joinToString("\n|")}
-                |
-                |总结：所有指定座位均无法预约。
-                |请尝试手动预约或联系管理员处理。
+                |祝您学习愉快！
             """.trimMargin()
             
             sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
         }
     }
     
-    return false
+    return success
 }
 
 /**

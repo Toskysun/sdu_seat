@@ -36,6 +36,11 @@ private val logger = KotlinLogging.logger {}
 
 object Lib {
     /**
+     * 存储最后一次请求的响应消息
+     */
+    var lastResponseMessage: String? = null
+    
+    /**
      * 预约座位
      * @return 0：失败，1：成功，2：重新登录，3：预约已停止|未开始预约
      */
@@ -79,6 +84,7 @@ object Lib {
         }
         val status = json!!.get("status").asInt
         val msg = json.get("msg").asString
+        lastResponseMessage = msg  // 存储最后的响应消息
         logger.info { "预约$date ${period.startTime}-${period.endTime}时间段座位[${area.name}-${seat.name}]返回信息: $msg" }
         if (status == 1) {
             logger.info {
