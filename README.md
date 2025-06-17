@@ -16,6 +16,7 @@
 - 日志记录功能
 - 定时预约功能
 - 可配置提前登录时间（默认5分钟）和最大尝试次数（默认50次），登录成功后立即停止
+- 当`only=false`时，如果所有座位都不可预约，系统会继续尝试，直到成功预约或达到最大尝试次数
 
 ## 系统要求
 
@@ -56,6 +57,7 @@
   "webVpn": false,               // 是否使用WebVPN
   "maxLoginAttempts": 50,        // 最大登录尝试次数
   "earlyLoginMinutes": 5,        // 提前登录的分钟数
+  "enableEarlyLogin": true,      // 是否启用提前登录功能
   "emailNotification": {          // 邮件通知配置
     "enable": false,              // 是否启用邮件通知
     "smtpHost": "",              // SMTP服务器地址
@@ -194,3 +196,29 @@ Fingerprint2.get(function(components){
 ## 感谢
 
 - [fengyuecanzhu/Sdu-Seat](https://github.com/fengyuecanzhu/Sdu-Seat) - 感谢该项目提供的思路和参考
+
+## 更新日志
+
+### v1.5.5
+- 修改了当`only=false`时的行为，即使所有座位都不可预约，系统也会继续尝试
+- 优化了日志输出，使错误信息更加清晰
+
+### v1.5.4
+- 修复了当`only=false`时所有座位不可预约仍继续尝试的问题
+
+### v1.5.3
+- 优化了邮件通知，汇总失败信息发送单封邮件
+- 修复了多处潜在bug
+
+### v1.5.2
+- 添加了提前登录功能的开关配置项`enableEarlyLogin`
+- 优化了提前登录的尝试机制
+
+### v1.5.1
+- 修复了邮件通知功能的bug
+- 优化了错误处理逻辑
+
+### v1.5.0
+- 添加了提前登录功能
+- 增强了座位预约的成功率
+- 优化了日志记录
