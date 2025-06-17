@@ -212,9 +212,12 @@ fun loginAndGetSeats(judgeExpire: Boolean = true) {
 fun startBook() {
     date = dateFormat.format(System.currentTimeMillis() + ONE_DAY * config!!.delta)
     success.clear()
+    var allAttemptsFailed = true // 跟踪是否所有尝试都失败了
+    
     for (i in 0..config!!.retry) {
         try {
             bookTask()
+            allAttemptsFailed = false // 至少一次尝试成功
             break
         } catch (e: Exception) {
             // 检查是否是访问频繁异常，如果是则不再重试
@@ -235,6 +238,29 @@ fun startBook() {
         if (i < config!!.retry)
             logger.info { "尝试预约${i + 1}/${config!!.retry}失败，将在${config!!.retryInterval}秒后重试..." }
         Thread.sleep((config!!.retryInterval * 1000).toLong())
+    }
+    
+    // 如果所有尝试都失败，发送邮件通知
+    if (allAttemptsFailed) {
+        logger.error { "所有预约尝试均失败，将发送邮件通知" }
+        config!!.emailNotification?.let { emailConfig ->
+            val subject = "图书馆座位预约失败通知"
+            val content = """
+                |预约失败！
+                |日期：$date
+                |
+                |失败原因：
+                |尝试了${config!!.retry + 1}次预约，但均失败。
+                |
+                |可能的原因：
+                |1. 所有座位均不可预约，可能是预约时间未到或预约已结束
+                |2. 如果设置了只预约预设座位，可以考虑关闭"只预约预设座位"选项
+                |3. 如果遇到访问频繁，请稍后再试
+                |4. 如果问题持续存在，请尝试手动预约或检查配置
+            """.trimMargin()
+            
+            sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
+        }
     }
 }
 
@@ -339,7 +365,7 @@ fun bookTask() {
     }
     
     // 检查是否有预约失败的情况
-    val failedPeriods = periods.keys.filter { !success[it]!! }
+    val failedPeriods = periods.keys.filter { !success.getOrDefault(it, false) }
     if (failedPeriods.isNotEmpty()) {
         val failureMessages = failedPeriods.map { periodKey -> 
             val periodTime = "${periods[periodKey]!!.startTime}-${periods[periodKey]!!.endTime}"
