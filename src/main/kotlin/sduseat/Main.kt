@@ -342,24 +342,44 @@ fun bookTask() {
             val seats = querySeats[periodKey]!!
             val availableSeats = seats.filter { it.status == 1 }
             val unavailableSeats = seats.filter { it.status != 1 }
+            val allSeatsInArea = allSeats[periodKey]!!
+            val otherAvailableSeats = if (!config!!.only) {
+                allSeatsInArea.filter { it.status == 1 }
+            } else {
+                emptyList()
+            }
             
             val details = StringBuilder()
             details.append("时间段：$periodTime\n")
+            details.append("预设座位状态：\n")
             
-            if (availableSeats.isEmpty()) {
-                details.append("- 无可用座位\n")
+            if (seats.isEmpty()) {
+                details.append("- 未找到任何预设座位\n")
             } else {
-                details.append("- 可用座位：\n")
-                availableSeats.forEach { seat ->
-                    details.append("  * ${seat.area.name}-${seat.name}\n")
+                seats.forEach { seat ->
+                    details.append("- ${seat.area.name}-${seat.name}: ${getSeatStatusDescription(seat.status)}\n")
                 }
             }
             
-            if (unavailableSeats.isNotEmpty()) {
-                details.append("- 不可用座位：\n")
-                unavailableSeats.forEach { seat ->
-                    details.append("  * ${seat.area.name}-${seat.name} (${getSeatStatusDescription(seat.status)})\n")
+            if (!config!!.only && otherAvailableSeats.isNotEmpty()) {
+                details.append("\n区域内其他可用座位：\n")
+                otherAvailableSeats.take(5).forEach { seat ->
+                    details.append("- ${seat.area.name}-${seat.name}\n")
                 }
+                if (otherAvailableSeats.size > 5) {
+                    details.append("- ... 等共${otherAvailableSeats.size}个座位\n")
+                }
+            }
+            
+            details.append("\n预约失败原因：\n")
+            if (availableSeats.isEmpty()) {
+                if (config!!.only) {
+                    details.append("- 所有预设座位均不可预约，且设置了只预约预设座位\n")
+                } else if (otherAvailableSeats.isEmpty()) {
+                    details.append("- 所有座位均不可预约\n")
+                }
+            } else {
+                details.append("- 预约过程中发生错误，具体原因请查看日志\n")
             }
             
             details.toString()
@@ -367,15 +387,19 @@ fun bookTask() {
         
         // 发送一个详细的汇总邮件
         config!!.emailNotification?.let { emailConfig ->
-            val subject = "图书馆座位预约失败汇总通知"
+            val subject = "图书馆座位预约失败通知"
             val content = """
-                |预约失败汇总！
+                |预约失败！
                 |日期：$date
                 |
                 |失败详情：
                 |${failureMessages.joinToString("\n|")}
                 |
-                |请尝试手动预约或联系管理员处理。
+                |建议操作：
+                |1. 如果所有座位均不可预约，可能是预约时间未到或预约已结束
+                |2. 如果只有预设座位不可预约，可以考虑关闭"只预约预设座位"选项
+                |3. 如果遇到访问频繁，请稍后再试
+                |4. 如果问题持续存在，请尝试手动预约或联系管理员处理
             """.trimMargin()
             
             sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
