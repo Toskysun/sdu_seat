@@ -93,6 +93,12 @@ object Lib {
                         "时间：$date ${period.startTime}-${period.endTime}"
             }
         }
+        
+        // 检查是否访问频繁
+        if (msg.contains("访问频繁")) {
+            throw LibException("访问频繁！$msg")
+        }
+        
         val result = if (status == 1 || msg.contains("不可重复预约")) {
             1
         } else if (msg.contains("重新登录")) {
