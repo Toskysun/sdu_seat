@@ -53,7 +53,7 @@
   "retry": 10,                   // 重试次数
   "retryInterval": 30,           // 重试间隔（秒）
   "delta": 0,                    // 预约日期偏移
-  "bookOnce": false,             // 是否只预约一次
+  "bookOnce": false,             // 是否立即预约一次
   "webVpn": false,               // 是否使用WebVPN
   "maxLoginAttempts": 50,        // 最大登录尝试次数
   "earlyLoginMinutes": 5,        // 提前登录的分钟数
