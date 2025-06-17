@@ -34,38 +34,74 @@
 
 ## 配置说明
 
-在 `config/config.json` 中配置：
+配置文件使用JSON格式，默认路径为 `config/config.json`。以下是所有配置项的说明：
+
+| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
+|--------|------|--------|----------|------|
+| userid | 学号 | - | ✓ | "202500001001" |
+| passwd | 密码 | - | ✓ | "password" |
+| deviceId | 设备ID（获取方法见下方说明） | - | ✓ | "device_id" |
+| area | 选座区域 | - | ✓ | "威海馆-主楼(3-10)" |
+| seats | 预约座位信息，格式为{"区域": ["座位号"]} | {} | ✓ | {"三楼阅览室": ["001", "011"]} |
+| filterRule | 座位筛选规则，支持JavaScript脚本 | "" | ✗ | "seats.filter(it => !['001'].includes(it.name))" |
+| only | 是否仅预约指定座位 | false | ✗ | false |
+| time | 运行时间，格式为"HH:mm[:ss]" | "06:02" | ✗ | "12:32:00" |
+| period | 预约时间段，格式为"HH:mm-HH:mm" | "08:00-22:30" | ✗ | "08:00-22:30" |
+| retry | 预约重试次数 | 10 | ✗ | 10 |
+| retryInterval | 预约重试间隔（秒） | 2 | ✗ | 30 |
+| delta | 预约日期偏移（天） | 0 | ✗ | 0 |
+| bookOnce | 是否立即预约一次 | false | ✗ | false |
+| webVpn | 是否使用WebVPN | false | ✗ | false |
+| maxLoginAttempts | 最大登录尝试次数 | 50 | ✗ | 50 |
+| earlyLoginMinutes | 提前登录的分钟数 | 5 | ✗ | 5 |
+| enableEarlyLogin | 是否启用提前登录功能 | true | ✗ | true |
+
+### 邮件通知配置
+
+邮件通知为可选功能，配置在 `emailNotification` 对象中：
+
+| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
+|--------|------|--------|----------|------|
+| enable | 是否启用邮件通知 | false | ✗ | true |
+| smtpHost | SMTP服务器地址 | - | 启用时必需 | "smtp.qq.com" |
+| smtpPort | SMTP端口 | 465 | ✗ | 465 |
+| username | 发件人邮箱 | - | 启用时必需 | "example@qq.com" |
+| password | 发件人密码（授权码） | - | 启用时必需 | "authorization_code" |
+| recipientEmail | 收件人邮箱 | - | 启用时必需 | "recipient@example.com" |
+| sslEnable | 是否启用SSL | true | ✗ | true |
+
+### 配置示例
 
 ```json
 {
-  "userid": "202500001001",        // 学号
-  "passwd": "password",            // 密码
-  "deviceId": "device_id",         // 设备ID
-  "area": "威海馆-主楼(3-10)",     // 选座区域
-  "seats": {                       // 座位信息
+  "userid": "202500001001",
+  "passwd": "password",
+  "deviceId": "device_id",
+  "area": "威海馆-主楼(3-10)",
+  "seats": {
     "三楼阅览室": ["001", "011"],
     "四楼阅览室": ["011", "012"]
   },
-  "filterRule": "",               // 座位筛选规则
-  "only": false,                  // 是否仅预约指定座位
-  "time": "12:32:00",            // 运行时间
-  "period": "08:00-22:30",       // 预约时间段
-  "retry": 10,                   // 重试次数
-  "retryInterval": 30,           // 重试间隔（秒）
-  "delta": 0,                    // 预约日期偏移
-  "bookOnce": false,             // 是否立即预约一次
-  "webVpn": false,               // 是否使用WebVPN
-  "maxLoginAttempts": 50,        // 最大登录尝试次数
-  "earlyLoginMinutes": 5,        // 提前登录的分钟数
-  "enableEarlyLogin": true,      // 是否启用提前登录功能
-  "emailNotification": {          // 邮件通知配置
-    "enable": false,              // 是否启用邮件通知
-    "smtpHost": "",              // SMTP服务器地址
-    "smtpPort": 465,             // SMTP端口
-    "username": "",              // 发件人邮箱
-    "password": "",              // 发件人密码（授权码）
-    "recipientEmail": "",        // 收件人邮箱
-    "sslEnable": true            // 是否启用SSL
+  "filterRule": "",
+  "only": false,
+  "time": "12:32:00",
+  "period": "08:00-22:30",
+  "retry": 10,
+  "retryInterval": 30,
+  "delta": 0,
+  "bookOnce": false,
+  "webVpn": false,
+  "maxLoginAttempts": 50,
+  "earlyLoginMinutes": 5,
+  "enableEarlyLogin": true,
+  "emailNotification": {
+    "enable": false,
+    "smtpHost": "",
+    "smtpPort": 465,
+    "username": "",
+    "password": "",
+    "recipientEmail": "",
+    "sslEnable": true
   }
 }
 ```
