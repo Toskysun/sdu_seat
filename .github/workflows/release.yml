@@ -77,7 +77,7 @@ jobs:
           cp build/libs/sdu-seat-*.jar release/windows/
           cp README.md release/windows/ || echo "README.md not found, skipping"
           cp LICENSE release/windows/ || echo "LICENSE not found, skipping"
-          cp config/config.example.json release/windows/ || echo "config.example.json not found, skipping"
+          cp config/config.example.json release/windows/config.json || echo "config.example.json not found, skipping"
           echo '@echo off' > release/windows/run.bat
           echo 'java -jar sdu-seat-*.jar %*' >> release/windows/run.bat
           echo 'pause' >> release/windows/run.bat
@@ -89,7 +89,7 @@ jobs:
           cp build/libs/sdu-seat-*.jar release/linux/
           cp README.md release/linux/ || echo "README.md not found, skipping"
           cp LICENSE release/linux/ || echo "LICENSE not found, skipping"
-          cp config/config.example.json release/linux/ || echo "config.example.json not found, skipping"
+          cp config/config.example.json release/linux/config.json || echo "config.example.json not found, skipping"
           echo '#!/bin/bash' > release/linux/run.sh
           echo 'java -jar sdu-seat-*.jar "$@"' >> release/linux/run.sh
           chmod +x release/linux/run.sh
@@ -101,7 +101,7 @@ jobs:
           cp build/libs/sdu-seat-*.jar release/macos/
           cp README.md release/macos/ || echo "README.md not found, skipping"
           cp LICENSE release/macos/ || echo "LICENSE not found, skipping"
-          cp config/config.example.json release/macos/ || echo "config.example.json not found, skipping"
+          cp config/config.example.json release/macos/config.json || echo "config.example.json not found, skipping"
           echo '#!/bin/bash' > release/macos/run.sh
           echo 'java -jar sdu-seat-*.jar "$@"' >> release/macos/run.sh
           chmod +x release/macos/run.sh

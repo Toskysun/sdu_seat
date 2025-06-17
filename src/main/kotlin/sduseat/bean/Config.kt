@@ -67,15 +67,26 @@ data class Config(
 
     companion object {
         fun initConfig(args: Array<String>) {
-            val configPath = if (args.isEmpty()) {
-                Const.defaultConfig
-            } else {
-                args[0]
+            // 获取 JAR 文件所在目录
+            val jarPath = Config::class.java.protectionDomain.codeSource.location.toURI().path
+            val jarDir = File(jarPath).parent
+            val jarDirConfig = File(jarDir, "config.json")
+
+            // 确定配置文件路径
+            val configPath = when {
+                // 1. 如果命令行指定了配置文件，优先使用
+                args.isNotEmpty() -> args[0]
+                // 2. 如果 JAR 同目录下存在 config.json，使用它
+                jarDirConfig.exists() -> jarDirConfig.absolutePath
+                // 3. 最后使用默认配置文件路径
+                else -> Const.defaultConfig
             }
+
             val configFile = File(configPath)
             if (!configFile.exists()) {
                 throw AppException("$configPath 配置文件不存在")
             } else {
+                logger.info { "使用配置文件：$configPath" }
                 config = GSON.fromJsonObject<Config>(configFile.readText())?.apply {
                     if (userid.isNullOrEmpty()) throw AppException("userid：用户名/学号不能为空")
                     if (passwd.isNullOrEmpty()) throw AppException("passwd：密码不能为空")
