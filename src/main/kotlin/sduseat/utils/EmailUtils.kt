@@ -24,6 +24,8 @@ import jakarta.mail.internet.MimeMessage
 import sduseat.bean.EmailConfig
 import mu.KotlinLogging
 import java.util.*
+import java.io.File
+import java.io.RandomAccessFile
 
 private val logger = KotlinLogging.logger {}
 
@@ -83,6 +85,75 @@ object EmailUtils {
             logger.debug(e) { "邮件错误详情" }
         } catch (e: Exception) {
             logger.error(e) { "邮件发送失败：${e.message}" }
+        }
+    }
+    
+    /**
+     * 获取最近的日志内容
+     * @param lines 要获取的日志行数
+     * @param includeErrors 是否只包含错误日志
+     * @return 日志内容字符串
+     */
+    fun getRecentLogs(lines: Int = 100, includeErrors: Boolean = false): String {
+        val logFile = File("logs/sdu-seat.log")
+        if (!logFile.exists()) {
+            logger.warn { "日志文件不存在: ${logFile.absolutePath}" }
+            return "日志文件不存在"
+        }
+        
+        try {
+            // 使用RandomAccessFile从文件末尾读取
+            val randomAccessFile = RandomAccessFile(logFile, "r")
+            val fileLength = randomAccessFile.length()
+            
+            // 存储日志行
+            val logLines = mutableListOf<String>()
+            var linesRead = 0
+            
+            // 从文件末尾开始向前读取
+            var pointer = fileLength - 1
+            randomAccessFile.seek(pointer)
+            
+            // 跳过文件末尾的换行符
+            while (pointer >= 0) {
+                val c = randomAccessFile.read().toChar()
+                if (c != '\n' && c != '\r') {
+                    pointer--
+                    randomAccessFile.seek(pointer)
+                } else {
+                    break
+                }
+            }
+            
+            // 向前读取指定行数
+            while (pointer >= 0 && linesRead < lines) {
+                randomAccessFile.seek(pointer)
+                val c = randomAccessFile.read().toChar()
+                
+                // 找到一行的开始
+                if (c == '\n' || c == '\r' || pointer == 0) {
+                    if (pointer != fileLength - 1) { // 不是文件的最后一个字符
+                        randomAccessFile.seek(if (pointer == 0) 0 else pointer + 1)
+                        val line = randomAccessFile.readLine()
+                        
+                        // 如果只需要错误日志且当前行包含错误信息，或者不限制日志类型
+                        if (!includeErrors || (line != null && (line.contains("ERROR") || line.contains("WARN")))) {
+                            logLines.add(line ?: "")
+                            linesRead++
+                        }
+                    }
+                }
+                
+                pointer--
+            }
+            
+            randomAccessFile.close()
+            
+            // 反转列表以按时间顺序排列
+            return logLines.reversed().joinToString("\n")
+        } catch (e: Exception) {
+            logger.error(e) { "读取日志文件失败: ${e.message}" }
+            return "读取日志文件失败: ${e.message}"
         }
     }
 } 
