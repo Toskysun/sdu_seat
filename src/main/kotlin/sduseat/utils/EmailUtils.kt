@@ -111,11 +111,11 @@ object EmailUtils {
             var linesRead = 0
             
             // 从文件末尾开始向前读取
-            var pointer = fileLength - 1
+            var pointer = fileLength - 1L
             randomAccessFile.seek(pointer)
             
             // 跳过文件末尾的换行符
-            while (pointer >= 0) {
+            while (pointer >= 0L) {
                 val c = randomAccessFile.read().toChar()
                 if (c != '\n' && c != '\r') {
                     pointer--
@@ -126,7 +126,7 @@ object EmailUtils {
             }
             
             // 向前读取指定行数
-            while (pointer >= 0 && linesRead < lines) {
+            while (pointer >= 0L && linesRead < lines) {
                 randomAccessFile.seek(pointer)
                 val c = randomAccessFile.read().toChar()
                 
