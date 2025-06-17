@@ -15,8 +15,8 @@
 - 支持WebVPN访问
 - 日志记录功能
 - 定时预约功能
-- 可配置提前登录时间（默认5分钟）和最大尝试次数（默认50次），登录成功后立即停止
-- 当`only=false`时，如果所有座位都不可预约，系统会继续尝试，直到成功预约或达到最大尝试次数
+- 可配置提前登录时间和最大尝试次数
+- 邮件通知功能
 
 ## 系统要求
 
@@ -36,71 +36,81 @@
 
 配置文件使用JSON格式，默认路径为 `config/config.json`。以下是所有配置项的说明：
 
-| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
-|--------|------|--------|----------|------|
-| userid | 学号 | - | ✓ | "202500001001" |
-| passwd | 密码 | - | ✓ | "password" |
-| deviceId | 设备ID（获取方法见下方说明） | - | ✓ | "device_id" |
-| area | 选座区域 | - | ✓ | "威海馆-主楼(3-10)" |
-| seats | 预约座位信息，格式为{"区域": ["座位号"]} | {} | ✓ | {"三楼阅览室": ["001", "011"]} |
-| filterRule | 座位筛选规则，支持JavaScript脚本 | "" | ✗ | "seats.filter(it => !['001'].includes(it.name))" |
-| only | 是否仅预约指定座位 | false | ✗ | false |
-| time | 运行时间，格式为"HH:mm[:ss]" | "06:02" | ✗ | "12:32:00" |
-| period | 预约时间段，格式为"HH:mm-HH:mm" | "08:00-22:30" | ✗ | "08:00-22:30" |
-| retry | 预约重试次数 | 10 | ✗ | 10 |
-| retryInterval | 预约重试间隔（秒） | 2 | ✗ | 30 |
-| delta | 预约日期偏移（天） | 0 | ✗ | 0 |
-| bookOnce | 是否立即预约一次 | false | ✗ | false |
-| webVpn | 是否使用WebVPN | false | ✗ | false |
-| maxLoginAttempts | 最大登录尝试次数 | 50 | ✗ | 50 |
-| earlyLoginMinutes | 提前登录的分钟数 | 5 | ✗ | 5 |
-| enableEarlyLogin | 是否启用提前登录功能 | true | ✗ | true |
-
-### 邮件通知配置
-
-邮件通知为可选功能，配置在 `emailNotification` 对象中：
+### 基础配置（必需）
 
 | 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
 |--------|------|--------|----------|------|
-| enable | 是否启用邮件通知 | false | ✗ | true |
+| userid | 学号 | - | ✅ | "202500001001" |
+| passwd | 密码 | - | ✅ | "Chsya9" |
+| deviceId | 设备ID（获取方法见下方说明） | - | ✅ | "464ab241e9a1c1e9" |
+| area | 选座区域 | - | ✅ | "趵突泉馆-一楼" |
+| seats | 预约座位信息，格式为{"区域": ["座位号"]} | {} | ✅ | 见下方示例 |
+
+### 预约策略配置（可选）
+
+| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
+|--------|------|--------|----------|------|
+| filterRule | 座位筛选规则，支持JavaScript脚本 | "" | ❌ | "" |
+| only | 是否仅预约指定座位 | false | ❌ | true |
+| time | 运行时间，格式为"HH:mm:ss" | "06:02" | ❌ | "12:29:57" |
+| period | 预约时间段，格式为"HH:mm-HH:mm" | "08:00-22:30" | ❌ | "08:00-22:30" |
+| retry | 预约重试次数 | 10 | ❌ | 3 |
+| retryInterval | 预约重试间隔（秒） | 2 | ❌ | 3 |
+| delta | 预约日期偏移（天） | 0 | ❌ | 1 |
+| bookOnce | 是否立即预约一次 | false | ❌ | false |
+
+### 登录配置（可选）
+
+| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
+|--------|------|--------|----------|------|
+| webVpn | 是否使用WebVPN | false | ❌ | false |
+| earlyLoginMinutes | 提前登录的分钟数 | 5 | ❌ | 5 |
+| maxLoginAttempts | 最大登录尝试次数 | 50 | ❌ | 50 |
+| enableEarlyLogin | 是否启用提前登录功能 | true | ❌ | true |
+
+### 邮件通知配置（可选）
+
+| 配置项 | 说明 | 默认值 | 是否必需 | 示例 |
+|--------|------|--------|----------|------|
+| enable | 是否启用邮件通知 | false | ❌ | true |
 | smtpHost | SMTP服务器地址 | - | 启用时必需 | "smtp.qq.com" |
-| smtpPort | SMTP端口 | 465 | ✗ | 465 |
-| username | 发件人邮箱 | - | 启用时必需 | "example@qq.com" |
-| password | 发件人密码（授权码） | - | 启用时必需 | "authorization_code" |
-| recipientEmail | 收件人邮箱 | - | 启用时必需 | "recipient@example.com" |
-| sslEnable | 是否启用SSL | true | ✗ | true |
+| smtpPort | SMTP端口 | 465 | ❌ | 465 |
+| username | 发件人邮箱 | - | 启用时必需 | "12345678@qq.com" |
+| password | 发件人密码（授权码） | - | 启用时必需 | "66666666" |
+| recipientEmail | 收件人邮箱 | - | 启用时必需 | "sss@163.com" |
+| sslEnable | 是否启用SSL | true | ❌ | true |
 
 ### 配置示例
 
 ```json
 {
   "userid": "202500001001",
-  "passwd": "password",
-  "deviceId": "device_id",
-  "area": "威海馆-主楼(3-10)",
+  "passwd": "Chsya9",
+  "deviceId": "464ab241e9a1c1e9",
+  "area": "趵突泉馆-一楼",
   "seats": {
-    "三楼阅览室": ["001", "011"],
-    "四楼阅览室": ["011", "012"]
+    "趵突泉阅览室112": ["11","12","13"],
+    "趵突泉专业阅览室104": ["11","08","14"]
   },
   "filterRule": "",
-  "only": false,
-  "time": "12:32:00",
+  "only": true,
+  "time": "12:29:57",
   "period": "08:00-22:30",
-  "retry": 10,
-  "retryInterval": 30,
-  "delta": 0,
+  "retry": 3,
+  "retryInterval": 3,
+  "delta": 1,
   "bookOnce": false,
   "webVpn": false,
-  "maxLoginAttempts": 50,
   "earlyLoginMinutes": 5,
+  "maxLoginAttempts": 50,
   "enableEarlyLogin": true,
   "emailNotification": {
-    "enable": false,
-    "smtpHost": "",
+    "enable": true,
+    "smtpHost": "smtp.qq.com",
     "smtpPort": 465,
-    "username": "",
-    "password": "",
-    "recipientEmail": "",
+    "username": "12345678@qq.com",
+    "password": "66666666",
+    "recipientEmail": "sss@163.com",
     "sslEnable": true
   }
 }
@@ -108,7 +118,7 @@
 
 ## 座位过滤规则
 
-过滤规则为JavaScript脚本，用于筛选符合条件的座位。
+过滤规则使用JavaScript脚本，用于筛选符合条件的座位。
 
 ### 过滤规则说明
 
@@ -122,7 +132,6 @@
 ```javascript
 // 过滤靠近门口和打印机的座位
 seats.filter(it => {
-    // 避开靠近门口和打印机的座位
     return !["001", "002", "003", "004", "005", "006"].includes(it.name)
 })
 
@@ -191,19 +200,16 @@ Fingerprint2.get(function(components){
 ## 开发说明
 
 ### 构建项目
-
 ```bash
 ./gradlew clean build
 ```
 
 ### 生成可执行jar
-
 ```bash
 ./gradlew shadowJar
 ```
 
 ### 运行测试
-
 ```bash
 ./gradlew test
 ```
@@ -232,29 +238,3 @@ Fingerprint2.get(function(components){
 ## 感谢
 
 - [fengyuecanzhu/Sdu-Seat](https://github.com/fengyuecanzhu/Sdu-Seat) - 感谢该项目提供的思路和参考
-
-## 更新日志
-
-### v1.5.5
-- 修改了当`only=false`时的行为，即使所有座位都不可预约，系统也会继续尝试
-- 优化了日志输出，使错误信息更加清晰
-
-### v1.5.4
-- 修复了当`only=false`时所有座位不可预约仍继续尝试的问题
-
-### v1.5.3
-- 优化了邮件通知，汇总失败信息发送单封邮件
-- 修复了多处潜在bug
-
-### v1.5.2
-- 添加了提前登录功能的开关配置项`enableEarlyLogin`
-- 优化了提前登录的尝试机制
-
-### v1.5.1
-- 修复了邮件通知功能的bug
-- 优化了错误处理逻辑
-
-### v1.5.0
-- 添加了提前登录功能
-- 增强了座位预约的成功率
-- 优化了日志记录

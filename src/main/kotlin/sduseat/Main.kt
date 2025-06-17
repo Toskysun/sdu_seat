@@ -114,14 +114,14 @@ fun main(args: Array<String>) {
     
     // 只有在启用提前登录时才创建提前登录任务
     if (config!!.enableEarlyLogin) {
-        val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
-        logger.info { "将在${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(earlyStartTime)}提前开始登录尝试" }
-        
-        val earlyLoginTask = object : TimerTask() {
-            override fun run() {
-                startEarlyLogin(startTime)
-            }
+    val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
+    logger.info { "将在${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(earlyStartTime)}提前开始登录尝试" }
+    
+    val earlyLoginTask = object : TimerTask() {
+        override fun run() {
+            startEarlyLogin(startTime)
         }
+    }
         // 提前登录任务
         time.schedule(earlyLoginTask, earlyStartTime)
     } else {
@@ -311,8 +311,8 @@ fun bookTask() {
                     }
                 } else {
                     // 如果没有可用的预设座位，且不限制只预约预设座位，则尝试预约其他座位
-                    if (!config!!.only) {
-                        logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
+                if (!config!!.only) {
+                    logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
                         val availableSeats = allSeats[periodKey]!!.filter { it.status == 1 }
                         
                         if (availableSeats.isEmpty()) {
@@ -329,7 +329,7 @@ fun bookTask() {
                             curSuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
                             if (!curSuccess) {
                                 attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
-                            }
+                }
                         }
                     } else {
                         attemptDetails.add("没有可用的预设座位，且设置了只预约预设座位")
@@ -413,27 +413,27 @@ fun bookTask() {
             }
             
             details.toString()
-        }
+    }
         
         // 发送一个详细的汇总邮件
-        config!!.emailNotification?.let { emailConfig ->
+            config!!.emailNotification?.let { emailConfig ->
             val subject = "图书馆座位预约失败通知"
-            val content = """
+                val content = """
                 |预约失败！
-                |日期：$date
-                |
-                |失败详情：
-                |${failureMessages.joinToString("\n|")}
-                |
+                    |日期：$date
+                    |
+                    |失败详情：
+                    |${failureMessages.joinToString("\n|")}
+                    |
                 |建议操作：
                 |1. 如果所有座位均不可预约，可能是预约时间未到或预约已结束
                 |2. 如果只有预设座位不可预约，可以考虑关闭"只预约预设座位"选项
                 |3. 如果遇到访问频繁，请稍后再试
                 |4. 如果问题持续存在，请尝试手动预约或联系管理员处理
-            """.trimMargin()
-            
-            sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
-        }
+                """.trimMargin()
+                
+                sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
+            }
         
         throw LibException("部分时段预约失败")
     }
@@ -479,33 +479,33 @@ fun bookSingleSeat(
         return false
     }
     
-    if (res == 3) {
+            if (res == 3) {
         logger.info { "座位 ${seat.area.name}-${seat.name} 当前状态无法预约" }
         return false
-    } else if (res == 2) {
-        needReLogin = true
+            } else if (res == 2) {
+                needReLogin = true
         logger.info { "座位 ${seat.area.name}-${seat.name} 需要重新登录" }
         return false
-    }
+            }
     
     val success = res == 1
-    
-    if (success) {
-        // 发送邮件通知
-        config!!.emailNotification?.let { emailConfig ->
-            val subject = "图书馆座位预约成功通知"
-            val content = """
-                |预约成功！
-                |日期：$date
-                |时间段：$periodTime
-                |区域：${seat.area.name}
-                |座位号：${seat.name}
-                |
-                |祝您学习愉快！
-            """.trimMargin()
             
-            sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
-        }
+            if (success) {
+                // 发送邮件通知
+                config!!.emailNotification?.let { emailConfig ->
+                    val subject = "图书馆座位预约成功通知"
+                    val content = """
+                        |预约成功！
+                        |日期：$date
+                        |时间段：$periodTime
+                        |区域：${seat.area.name}
+                        |座位号：${seat.name}
+                        |
+                        |祝您学习愉快！
+                    """.trimMargin()
+                    
+                    sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
+                }
     }
     
     return success
