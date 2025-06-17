@@ -110,23 +110,30 @@ fun main(args: Array<String>) {
     }
     logger.info { "请等待到${sdf.format(startTime)}" }
     
-    val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
-    logger.info { "将在${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(earlyStartTime)}提前开始登录尝试" }
-    
     val time = Timer()
-    val earlyLoginTask = object : TimerTask() {
-        override fun run() {
-            startEarlyLogin(startTime)
+    
+    // 只有在启用提前登录时才创建提前登录任务
+    if (config!!.enableEarlyLogin) {
+        val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
+        logger.info { "将在${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(earlyStartTime)}提前开始登录尝试" }
+        
+        val earlyLoginTask = object : TimerTask() {
+            override fun run() {
+                startEarlyLogin(startTime)
+            }
         }
+        // 提前登录任务
+        time.schedule(earlyLoginTask, earlyStartTime)
+    } else {
+        logger.info { "提前登录功能已禁用" }
     }
+    
     val bookTask = object : TimerTask() {
         override fun run() {
             startBook()
         }
     }
     
-    // 提前登录任务
-    time.schedule(earlyLoginTask, earlyStartTime)
     // 正常预约任务
     time.scheduleAtFixedRate(bookTask, startTime, ONE_DAY)
 }

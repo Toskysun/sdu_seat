@@ -18,6 +18,7 @@
   "webVpn": false,
   "earlyLoginMinutes": 5,
   "maxLoginAttempts": 50,
+  "enableEarlyLogin": true,
   "emailNotification": {
     "enable": true,
     "smtpHost": "smtp.qq.com",

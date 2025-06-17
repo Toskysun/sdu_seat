@@ -46,7 +46,8 @@ private val logger = KotlinLogging.logger {}
  * - webVpn: 是否使用WebVPN
  * - maxLoginAttempts: 最大登录尝试次数，默认50次，登录成功后会立即停止尝试
  * - earlyLoginMinutes: 系统会在预约时间前多少分钟自动开始登录尝试
- * 注意：系统会在预约时间前5分钟自动开始登录尝试，最多尝试maxLoginAttempts次，无间隔
+ * - enableEarlyLogin: 是否启用提前登录功能，默认启用
+ * 注意：如果启用提前登录，系统会在预约时间前earlyLoginMinutes分钟自动开始登录尝试，最多尝试maxLoginAttempts次，无间隔
  */
 data class Config(
     var userid: String? = null,
@@ -65,6 +66,7 @@ data class Config(
     var webVpn: Boolean = false,
     var maxLoginAttempts: Int = 50,
     var earlyLoginMinutes: Int = 5,
+    var enableEarlyLogin: Boolean = true,
     var emailNotification: EmailConfig? = null,
 ) {
     constructor(webVpn: Boolean) : this("", "", "", "", webVpn = webVpn)
