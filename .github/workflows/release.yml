@@ -92,7 +92,9 @@ jobs:
           cp LICENSE release/windows/ || echo "LICENSE not found, skipping"
           cp config/config.example.json release/windows/config.json || echo "config.example.json not found, skipping"
           echo '@echo off' > release/windows/run.bat
-          echo 'java -jar sdu-seat-*.jar %*' >> release/windows/run.bat
+          echo 'for %%i in (sdu-seat-*.jar) do set JAR_FILE=%%i' >> release/windows/run.bat
+          echo 'echo Using JAR file: %JAR_FILE%' >> release/windows/run.bat
+          echo 'java -jar %JAR_FILE% %*' >> release/windows/run.bat
           echo 'pause' >> release/windows/run.bat
           cd release
           zip -r Sdu-Seat-Windows-${RELEASE_VERSION}.zip windows/
@@ -104,7 +106,9 @@ jobs:
           cp LICENSE release/linux/ || echo "LICENSE not found, skipping"
           cp config/config.example.json release/linux/config.json || echo "config.example.json not found, skipping"
           echo '#!/bin/bash' > release/linux/run.sh
-          echo 'java -jar sdu-seat-*.jar "$@"' >> release/linux/run.sh
+          echo 'JAR_FILE=$(ls sdu-seat-*.jar)' >> release/linux/run.sh
+          echo 'echo "Using JAR file: $JAR_FILE"' >> release/linux/run.sh
+          echo 'java -jar "$JAR_FILE" "$@"' >> release/linux/run.sh
           chmod +x release/linux/run.sh
           cd release
           tar -czvf Sdu-Seat-Linux-${RELEASE_VERSION}.tar.gz linux/
@@ -116,7 +120,9 @@ jobs:
           cp LICENSE release/macos/ || echo "LICENSE not found, skipping"
           cp config/config.example.json release/macos/config.json || echo "config.example.json not found, skipping"
           echo '#!/bin/bash' > release/macos/run.sh
-          echo 'java -jar sdu-seat-*.jar "$@"' >> release/macos/run.sh
+          echo 'JAR_FILE=$(ls sdu-seat-*.jar)' >> release/macos/run.sh
+          echo 'echo "Using JAR file: $JAR_FILE"' >> release/macos/run.sh
+          echo 'java -jar "$JAR_FILE" "$@"' >> release/macos/run.sh
           chmod +x release/macos/run.sh
           cd release
           tar -czvf Sdu-Seat-macOS-${RELEASE_VERSION}.tar.gz macos/
