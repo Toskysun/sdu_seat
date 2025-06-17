@@ -286,30 +286,32 @@ fun bookTask() {
                     if (!curSuccess) {
                         attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
                     }
-                } else if (!config!!.only) {
-                    // 如果没有可用的预设座位，获取所有可用座位
-                    logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
-                    val availableSeats = allSeats[periodKey]!!.filter { it.status == 1 }
-                    
-                    if (availableSeats.isEmpty()) {
-                        // 如果区域内没有可用座位，直接结束此时段的预约
-                        logger.info { "时间段${periodTime}区域内没有可用座位，停止尝试预约" }
-                        attemptDetails.add("区域内没有可用座位")
-                        success[periodKey] = false
-                        
-                        // 抛出特定异常，让上层处理
-                        throw LibException("区域内所有座位均不可预约")
-                    }
-                    
-                    // 只尝试预约第一个可用的座位
-                    val seatToBook = availableSeats.first()
-                    logger.info { "尝试预约座位: ${seatToBook.area.name}-${seatToBook.name}" }
-                    curSuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
-                    if (!curSuccess) {
-                        attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
-                    }
                 } else {
-                    attemptDetails.add("没有可用的预设座位，且设置了只预约预设座位")
+                    // 如果没有可用的预设座位，且不限制只预约预设座位，则尝试预约其他座位
+                    if (!config!!.only) {
+                        logger.info { "预约${periodTime}时间段座位：预设座位均无法预约，将预约预设区域的空闲座位" }
+                        val availableSeats = allSeats[periodKey]!!.filter { it.status == 1 }
+                        
+                        if (availableSeats.isEmpty()) {
+                            // 如果区域内没有可用座位，直接结束此时段的预约
+                            logger.info { "时间段${periodTime}区域内没有可用座位，停止尝试预约" }
+                            attemptDetails.add("区域内没有可用座位")
+                            success[periodKey] = false
+                            
+                            // 抛出特定异常，让上层处理
+                            throw LibException("区域内所有座位均不可预约")
+                        }
+                        
+                        // 只尝试预约第一个可用的座位
+                        val seatToBook = availableSeats.first()
+                        logger.info { "尝试预约座位: ${seatToBook.area.name}-${seatToBook.name}" }
+                        curSuccess = bookSingleSeat(seatToBook, periodKey, periodTime)
+                        if (!curSuccess) {
+                            attemptDetails.add("尝试预约座位 ${seatToBook.area.name}-${seatToBook.name} 失败")
+                        }
+                    } else {
+                        attemptDetails.add("没有可用的预设座位，且设置了只预约预设座位")
+                    }
                 }
                 
                 success[periodKey] = curSuccess
