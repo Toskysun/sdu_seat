@@ -190,3 +190,7 @@ Fingerprint2.get(function(components){
 ## 许可证
 
 本项目基于 GNU General Public License v3.0 开源，详见 [LICENSE](LICENSE) 文件。
+
+## 感谢
+
+- [fengyuecanzhu/Sdu-Seat](https://github.com/fengyuecanzhu/Sdu-Seat) - 感谢该项目提供的思路和参考
