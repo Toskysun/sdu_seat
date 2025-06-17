@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'  # 当推送带v前缀的标签时触发
   workflow_dispatch:  # 允许手动触发工作流
+    inputs:
+      custom_tag:
+        description: '自定义标签名称 (例如: v1.0.0)'
+        required: false
+        type: string
 
 jobs:
   build-packages:
@@ -35,16 +40,31 @@ jobs:
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version=8.5
       
-      - name: Build with Gradle
-        run: ./gradlew clean shadowJar
-      
       - name: Set release version
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
           else
-            echo "RELEASE_VERSION=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+            if [[ -n "${{ github.event.inputs.custom_tag }}" ]]; then
+              echo "RELEASE_VERSION=${{ github.event.inputs.custom_tag }}" >> $GITHUB_ENV
+              echo "CUSTOM_TAG=${{ github.event.inputs.custom_tag }}" >> $GITHUB_ENV
+            else
+              echo "RELEASE_VERSION=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+            fi
           fi
+      
+      - name: Update project version with tag
+        run: |
+          # 从 RELEASE_VERSION 中移除 'v' 前缀（如果存在）
+          VERSION="${RELEASE_VERSION#v}"
+          # 使用 sed 更新 build.gradle 中的版本号
+          sed -i "s/^version = .*/version = '$VERSION'/g" build.gradle
+          # 更新 banner.txt 中的版本号
+          sed -i "s/:: Sdu-Seat v[0-9.]\+ ::/:: Sdu-Seat v$VERSION ::/g" src/main/resources/banner.txt
+          echo "已将项目版本号更新为: $VERSION"
+      
+      - name: Build with Gradle
+        run: ./gradlew clean shadowJar
       
       - name: Create Release Directories
         run: |
@@ -122,20 +142,28 @@ jobs:
           zip -r Sdu-Seat-Config-Example-${RELEASE_VERSION}.zip config/
       
       - name: Create tag for non-tag builds
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag == '' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "release-${RELEASE_VERSION}"
           git push origin "release-${RELEASE_VERSION}"
       
+      - name: Create custom tag
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ env.CUSTOM_TAG }}"
+          git push origin "${{ env.CUSTOM_TAG }}"
+      
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && env.RELEASE_VERSION || format('release-{0}', env.RELEASE_VERSION) }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && env.RELEASE_VERSION || (github.event.inputs.custom_tag != '' && env.CUSTOM_TAG || format('release-{0}', env.RELEASE_VERSION)) }}
           name: Release ${{ env.RELEASE_VERSION }}
           draft: false
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') && github.event.inputs.custom_tag == '' }}
           files: |
             release/*.zip
             release/*.tar.gz
