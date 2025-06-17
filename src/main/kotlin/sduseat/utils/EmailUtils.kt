@@ -26,10 +26,6 @@ import mu.KotlinLogging
 import java.util.*
 import java.io.File
 import java.io.RandomAccessFile
-import java.nio.charset.StandardCharsets
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.FileInputStream
 
 private val logger = KotlinLogging.logger {}
 
@@ -76,7 +72,7 @@ object EmailUtils {
                 setFrom(InternetAddress(config.username))
                 setRecipients(Message.RecipientType.TO, InternetAddress.parse(config.recipientEmail))
                 setSubject(subject)
-                setText(content, "UTF-8")
+                setText(content)
             }
 
             Transport.send(message)
@@ -106,18 +102,55 @@ object EmailUtils {
         }
         
         try {
-            // 使用BufferedReader读取文件，确保正确处理UTF-8编码
-            val reader = BufferedReader(InputStreamReader(FileInputStream(logFile), StandardCharsets.UTF_8))
-            val allLines = reader.useLines { it.toList() }
+            // 使用RandomAccessFile从文件末尾读取
+            val randomAccessFile = RandomAccessFile(logFile, "r")
+            val fileLength = randomAccessFile.length()
             
-            // 获取最后指定行数的日志
-            val startIndex = maxOf(0, allLines.size - lines)
-            val selectedLines = allLines.subList(startIndex, allLines.size)
-                .filter { line -> 
-                    !includeErrors || line.contains("ERROR") || line.contains("WARN")
+            // 存储日志行
+            val logLines = mutableListOf<String>()
+            var linesRead = 0
+            
+            // 从文件末尾开始向前读取
+            var pointer = fileLength - 1L
+            randomAccessFile.seek(pointer)
+            
+            // 跳过文件末尾的换行符
+            while (pointer >= 0L) {
+                val c = randomAccessFile.read().toChar()
+                if (c != '\n' && c != '\r') {
+                    pointer--
+                    randomAccessFile.seek(pointer)
+                } else {
+                    break
                 }
+            }
             
-            return selectedLines.joinToString("\n")
+            // 向前读取指定行数
+            while (pointer >= 0L && linesRead < lines) {
+                randomAccessFile.seek(pointer)
+                val c = randomAccessFile.read().toChar()
+                
+                // 找到一行的开始
+                if (c == '\n' || c == '\r' || pointer == 0L) {
+                    if (pointer != fileLength - 1L) { // 不是文件的最后一个字符
+                        randomAccessFile.seek(if (pointer == 0L) 0L else pointer + 1L)
+                        val line = randomAccessFile.readLine()
+                        
+                        // 如果只需要错误日志且当前行包含错误信息，或者不限制日志类型
+                        if (!includeErrors || (line != null && (line.contains("ERROR") || line.contains("WARN")))) {
+                            logLines.add(line ?: "")
+                            linesRead++
+                        }
+                    }
+                }
+                
+                pointer--
+            }
+            
+            randomAccessFile.close()
+            
+            // 反转列表以按时间顺序排列
+            return logLines.reversed().joinToString("\n")
         } catch (e: Exception) {
             logger.error(e) { "读取日志文件失败: ${e.message}" }
             return "读取日志文件失败: ${e.message}"
