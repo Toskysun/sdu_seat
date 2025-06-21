@@ -37,12 +37,14 @@ import kotlin.math.pow
 private val logger = KotlinLogging.logger {}
 
 private fun handleHttpError(response: Response, attempt: Int, maxRetries: Int, requestUrl: String): IOException {
-    val errorBody = response.body?.string() ?: ""
-    val errorMessage = "HTTP ${response.code}: ${response.message}" +
-        if (errorBody.isNotEmpty() && errorBody.length < 100) " - $errorBody" else ""
+    return response.use {
+        val errorBody = it.body?.string() ?: ""
+        val errorMessage = "HTTP ${it.code}: ${it.message}" +
+            if (errorBody.isNotEmpty() && errorBody.length < 100) " - $errorBody" else ""
 
-    logger.warn { "请求失败($attempt/${maxRetries + 1}): $requestUrl, 状态码: ${response.code}" }
-    return IOException(errorMessage)
+        logger.warn { "请求失败($attempt/${maxRetries + 1}): $requestUrl, 状态码: ${it.code}" }
+        IOException(errorMessage)
+    }
 }
 
 private fun handleIOException(e: IOException, attempt: Int, maxRetries: Int, requestUrl: String) {
@@ -63,7 +65,7 @@ fun OkHttpClient.newCallResponse(
     requestBuilder.apply(builder)
     var lastException: IOException? = null
     val request = requestBuilder.build()
-    
+
     for (i in 0..retry) {
         try {
             val response = newCall(request).execute()
@@ -71,6 +73,7 @@ fun OkHttpClient.newCallResponse(
                 return response
             }
 
+            // Close the unsuccessful response and handle the error
             lastException = handleHttpError(response, i + 1, retry, request.url.toString())
 
         } catch (e: IOException) {
@@ -81,23 +84,29 @@ fun OkHttpClient.newCallResponse(
     throw lastException ?: IOException("Unknown error")
 }
 
-fun OkHttpClient.newCallResponseBody(
+fun OkHttpClient.newCallResponseText(
     retry: Int = 0,
+    encode: String? = null,
     builder: Request.Builder.() -> Unit
-): ResponseBody {
+): String {
     val requestBuilder = Request.Builder()
     requestBuilder.header(Const.UA_NAME, Const.USER_AGENT)
     requestBuilder.apply(builder)
     var lastException: IOException? = null
     val request = requestBuilder.build()
-    
+
     for (i in 0..retry) {
         try {
             val response = newCall(request).execute()
             if (response.isSuccessful || response.isRedirect) {
-                return response.body ?: throw IOException("Empty response body")
+                // Properly close the response after reading the body
+                return response.use {
+                    val body = it.body ?: throw IOException("Empty response body")
+                    body.text(encode)
+                }
             }
 
+            // Close the unsuccessful response and handle the error
             lastException = handleHttpError(response, i + 1, retry, request.url.toString())
 
         } catch (e: IOException) {

@@ -25,9 +25,8 @@ import sduseat.bean.SeatBean
 import sduseat.constant.Const.LIB_URL
 import mu.KotlinLogging
 import sduseat.http.getProxyClient
-import sduseat.http.newCallResponseBody
+import sduseat.http.newCallResponseText
 import sduseat.http.postForm
-import sduseat.http.text
 import sduseat.utils.GSON
 import sduseat.utils.parseString
 import java.net.SocketTimeoutException
@@ -53,7 +52,7 @@ object Lib {
         var json: JsonObject? = null
         for (i in 0..retry) {
             val res = try {
-                getProxyClient().newCallResponseBody(retry) {
+                getProxyClient().newCallResponseText(retry) {
                     url(bookUrl)
                     postForm(mapOf(
                         "access_token" to auth.accessToken,
@@ -66,7 +65,7 @@ object Lib {
                         "Referer",
                         "$LIB_URL/web/seat3?area=${area.id}&segment=${period.id}&day=$date&startTime=${period.startTime}&endTime=${period.endTime}"
                     )
-                }.text()
+                }
             } catch (_: SocketTimeoutException) {
                 logger.error { "预约座位失败：网络请求超时，正在重试" }
                 continue
@@ -118,7 +117,7 @@ object Lib {
      */
     @Suppress("unused")
     fun cancelBook(bookBean: IBookBean, auth: IAuth): Boolean {
-        val res = getProxyClient().newCallResponseBody {
+        val res = getProxyClient().newCallResponseText {
             url("$LIB_URL/api.php/profile/books/${bookBean.id}")
             postForm(
                 mapOf(
@@ -133,7 +132,7 @@ object Lib {
                 "Referer",
                 "$LIB_URL/user/index/book"
             )
-        }.text()
+        }
         val json = GSON.parseString(res).asJsonObject
         val status = json.get("status").asInt
         val msg = json.get("msg").asString

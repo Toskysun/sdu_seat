@@ -114,14 +114,16 @@ abstract class IAuth(
                 )
             )
         }
-        val resBody = res.body?.text() ?: throw AuthException("设备验证响应为空")
-        val resInfo = try {
-            GSON.parseString(resBody).asJsonObject?.get("info")?.asString?.trim()
-        } catch (_: Throwable) {
-            //{"info":"binded"}
-            val rIndex = resBody.lastIndexOf("\"")
-            val lIndex = resBody.lastIndexOf("\"", rIndex - 1)
-            resBody.substring(lIndex + 1, rIndex).trim()
+        val resInfo = res.use {
+            val resBody = it.body?.text() ?: throw AuthException("设备验证响应为空")
+            try {
+                GSON.parseString(resBody).asJsonObject?.get("info")?.asString?.trim()
+            } catch (_: Throwable) {
+                //{"info":"binded"}
+                val rIndex = resBody.lastIndexOf("\"")
+                val lIndex = resBody.lastIndexOf("\"", rIndex - 1)
+                resBody.substring(lIndex + 1, rIndex).trim()
+            }
         }
         val info = when (resInfo) {
             "validErr" -> "用户名密码有误"

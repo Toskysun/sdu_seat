@@ -25,9 +25,8 @@ import sduseat.constant.Const.LIB_URL
 import mu.KotlinLogging
 import sduseat.constant.Const.statusMap
 import sduseat.http.getProxyClient
-import sduseat.http.newCallResponseBody
+import sduseat.http.newCallResponseText
 import sduseat.http.postForm
-import sduseat.http.text
 import sduseat.utils.GSON
 import sduseat.utils.centerString
 import sduseat.utils.parseString
@@ -38,9 +37,9 @@ private val logger = KotlinLogging.logger {}
 object Spider {
 
     fun getLibs(retry: Int = 0): Map<String, AreaBean> {
-        val res = getProxyClient().newCallResponseBody(retry) {
+        val res = getProxyClient().newCallResponseText(retry) {
             url(LIB_FIRST_URL)
-        }.text()
+        }
         val libMap = HashMap<String, AreaBean>()
         val doc = Jsoup.parse(res)
         val rooms = doc.select(".x_panel > div > .rooms")
@@ -65,10 +64,10 @@ object Spider {
     fun getAreas(area: AreaBean?, date: String, retry: Int = 0): Map<String, AreaBean> {
         if (area == null) throw SpiderException("getAreas:无法查找到对应的区域，请检查提供的区域信息")
         val url = "$LIB_URL/api.php/v3areas/${area.id}/date/$date"
-        val res = getProxyClient().newCallResponseBody(retry) {
+        val res = getProxyClient().newCallResponseText(retry) {
             url(url)
             header("Referer", "$LIB_URL/home/web/seat/area/${area.id}/date/$date")
-        }.text()
+        }
         val areaMap = HashMap<String, AreaBean>()
         val json = GSON.parseString(res).asJsonObject
         val status = json.get("status").asInt
@@ -121,14 +120,14 @@ object Spider {
         } ?: throw SpiderException("getSeats:无法查找到对应的时间段Period_${periodIndex}，请检查提供的时间段")
         val url = "$LIB_URL/api.php/spaces_old?" +
                 "area=${area.id}&segment=${period.id}&day=$date&startTime=${period.startTime}&endTime=${period.endTime}"
-        val res = getProxyClient().newCallResponseBody(retry) {
+        val res = getProxyClient().newCallResponseText(retry) {
             url(url)
             header(
                 "Referer",
                 "$LIB_URL/web/seat3?area=${area.id}&segment=${period.id}" +
                         "&day=$date&startTime=${period.startTime}&endTime=${period.endTime}"
             )
-        }.text()
+        }
         val seatMap = HashMap<String, SeatBean>()
         val json = GSON.parseString(res).asJsonObject
         val status = json.get("status").asInt
@@ -156,10 +155,10 @@ object Spider {
      */
     @Suppress("unused")
     fun getBook(status: String = "", keyword: String = "", page: Int = 1): List<IBookBean> {
-        val res = getProxyClient().newCallResponseBody {
+        val res = getProxyClient().newCallResponseText {
             url("$LIB_URL/user/index/book/p/$page")
             postForm(mapOf(Pair("status", status), Pair("keyword", keyword)))
-        }.text()
+        }
         val doc = Jsoup.parse(res)
         val tbody = doc.select("tbody").first()
         val trs = tbody?.select("tr")
@@ -178,10 +177,10 @@ object Spider {
 
     @Suppress("unused")
     fun getCurrentUse(userId: String): IBookBean? {
-        val res = getProxyClient().newCallResponseBody {
+        val res = getProxyClient().newCallResponseText {
             url("$LIB_URL/api.php/currentuse?user=$userId")
             header("Referer", LIB_URL)
-        }.text()
+        }
         val json = GSON.parseString(res).asJsonObject
         val status = json.get("status").asInt
         val msg = json.get("msg").asString

@@ -44,14 +44,18 @@ class Auth(
         val res = getProxyClient().newCallResponse(retry) {
             url(authUrl)
         }
-        //从统一身份认证界面获取必要信息
-        gatherInfo(res.body?.text() ?: "")
+        val authUrl: HttpUrl
+        res.use {
+            //从统一身份认证界面获取必要信息
+            gatherInfo(it.body?.text() ?: "")
+            authUrl = it.request.url
+        }
         //验证Device
         device(userid, password)
         //获得rsa
         rsa = getRsa(userid, password, lt)
         //统一身份认证、图书馆认证
-        auth(res.request.url)
+        auth(authUrl)
         //如果最终获取到这几个必要cookie则说明登陆成功
         val cookies = cookieCathe[host] ?: throw AuthException("登录失败：未获取到任何 Cookie")
         if (cookies.contains("userid") && cookies.contains("user_name")
@@ -87,14 +91,17 @@ class Auth(
                 "_eventId" to eventId
             ))
         }
-        logger.debug { "Status code for auth-1-response is ${res.code}" }
-        if (res.code != 302) {
-            val errorBody = res.body?.text()
-            throw AuthException("阶段1：响应状态码为${res.code}, 认证失败。服务器返回：$errorBody")
+        var newUrl: String
+        res.use {
+            logger.debug { "Status code for auth-1-response is ${it.code}" }
+            if (it.code != 302) {
+                val errorBody = it.body?.text()
+                throw AuthException("阶段1：响应状态码为${it.code}, 认证失败。服务器返回：$errorBody")
+            }
+            newUrl = it.headers["Location"]?.replace(" ", "") ?: ""
+            if (newUrl.startsWith("/cas/login?service="))
+                newUrl = newUrl.replace("/cas/login?service=", "")
         }
-        var newUrl = res.headers["Location"]?.replace(" ", "") ?: ""
-        if (newUrl.startsWith("/cas/login?service="))
-            newUrl = newUrl.replace("/cas/login?service=", "")
 
         // 切换HEADER绕过检查再进行重定向
         try {
@@ -102,9 +109,11 @@ class Auth(
                 url(URLDecoder.decode(newUrl, StandardCharsets.UTF_8))
                 header("Host", host)
             }
-            logger.debug { "Status code for auth-2-response is ${res.code}" }
-            if (res.code != 200) {
-                throw AuthException("阶段2：响应状态码为${res.code}, 认证失败")
+            res.use {
+                logger.debug { "Status code for auth-2-response is ${it.code}" }
+                if (it.code != 200) {
+                    throw AuthException("阶段2：响应状态码为${it.code}, 认证失败")
+                }
             }
         } catch (e: Exception) {
             if (e.message?.contains("HTTP 404") == true) {
@@ -114,8 +123,10 @@ class Auth(
                     url("$LIB_URL/home/web/f_second")
                     header("Host", host)
                 }
-                if (res.code != 200) {
-                    throw AuthException("阶段2(备用)：响应状态码为${res.code}, 认证失败")
+                res.use {
+                    if (it.code != 200) {
+                        throw AuthException("阶段2(备用)：响应状态码为${it.code}, 认证失败")
+                    }
                 }
             } else {
                 throw e
