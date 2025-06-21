@@ -69,8 +69,6 @@ data class Config(
     var enableEarlyLogin: Boolean = true,
     var emailNotification: EmailConfig? = null,
 ) {
-    constructor(webVpn: Boolean) : this("", "", "", "", webVpn = webVpn)
-
     companion object {
         fun initConfig(args: Array<String>) {
             // 获取 JAR 文件所在目录
