@@ -21,7 +21,9 @@ package sduseat.utils
 import okhttp3.Cookie
 
 
+@Suppress("unused")
 object CookieUtils {
+    @Suppress("unused")
     fun cookieToMap(cookie: String): MutableMap<String, String> {
         val cookieMap = mutableMapOf<String, String>()
         if (cookie.isBlank()) {
@@ -42,6 +44,7 @@ object CookieUtils {
         return cookieMap
     }
 
+    @Suppress("unused")
     fun mapToCookie(cookieMap: Map<String, String>?): String? {
         if (cookieMap == null || cookieMap.isEmpty()) {
             return null
@@ -59,6 +62,7 @@ object CookieUtils {
         return builder.deleteCharAt(builder.lastIndexOf(";")).toString()
     }
 
+    @Suppress("unused")
     fun collection2Str(cookies: Collection<Cookie>?): String {
         if (cookies == null || cookies.isEmpty()) {
             return ""

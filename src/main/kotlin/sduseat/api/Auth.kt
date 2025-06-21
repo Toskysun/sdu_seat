@@ -26,7 +26,6 @@ import sduseat.http.*
 import okhttp3.HttpUrl
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import kotlin.collections.HashMap
 
 private val logger = KotlinLogging.logger {}
 
@@ -54,12 +53,15 @@ class Auth(
         //统一身份认证、图书馆认证
         auth(res.request.url)
         //如果最终获取到这几个必要cookie则说明登陆成功
-        val cookies = cookieCathe[host]!!
+        val cookies = cookieCathe[host] ?: throw AuthException("登录失败：未获取到任何 Cookie")
         if (cookies.contains("userid") && cookies.contains("user_name")
             && cookies.contains("access_token")
         ) {
-            name = URLDecoder.decode(cookies["user_name"]?.value!!, StandardCharsets.UTF_8)
-            access_token = cookies["access_token"]?.value!!
+            name = URLDecoder.decode(
+                cookies["user_name"]?.value ?: throw AuthException("登录失败：用户名 Cookie 为空"),
+                StandardCharsets.UTF_8
+            )
+            accessToken = cookies["access_token"]?.value ?: throw AuthException("登录失败：访问令牌 Cookie 为空")
             expire = cookies["expire"]?.value
             logger.info { "登录成功，欢迎$name" }
         } else {
@@ -76,14 +78,14 @@ class Auth(
         //POST 统一身份认证 发送认证信息
         var res = getProxyClient(allowRedirect = false).newCallResponse(retry) {
             url(url)
-            postForm(HashMap<String, Any>().apply {
-                put("rsa", rsa)
-                put("ul", userid.length)
-                put("pl", password.length)
-                put("lt", lt)
-                put("execution", execution)
-                put("_eventId", _eventId)
-            })
+            postForm(mapOf(
+                "rsa" to rsa,
+                "ul" to userid.length,
+                "pl" to password.length,
+                "lt" to lt,
+                "execution" to execution,
+                "_eventId" to eventId
+            ))
         }
         logger.debug { "Status code for auth-1-response is ${res.code}" }
         if (res.code != 302) {

@@ -26,21 +26,23 @@ import org.mozilla.javascript.NativeArray
 
 private val logger = KotlinLogging.logger {}
 
+@Suppress("unused")
 object JsUtils {
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "unused")
     fun filterSeats(jsStr: String, seats: List<SeatBean>): List<SeatBean> {
         val sb = SimpleBindings()
         sb["seats"] = seats
         sb["utils"] = this
-        return when (val result = SCRIPT_ENGINE.eval(jsStr, sb)) {
-            is List<*> -> result.filterIsInstance<SeatBean>()
-            is Array<*> -> result.filterIsInstance<SeatBean>()
-            is NativeArray -> result.toArray().filterIsInstance<SeatBean>()
+        return when (val evalResult = SCRIPT_ENGINE.eval(jsStr, sb)) {
+            is List<*> -> evalResult.filterIsInstance<SeatBean>()
+            is NativeArray -> evalResult.toArray().filterIsInstance<SeatBean>()
+            is Array<*> -> evalResult.filterIsInstance<SeatBean>()
             else -> emptyList()
         }
     }
 
+    @Suppress("unused")
     fun log(msg: String) {
         logger.info { msg }
     }

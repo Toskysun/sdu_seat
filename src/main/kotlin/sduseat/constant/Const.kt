@@ -25,7 +25,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.script.ScriptEngineManager
 import org.mozilla.javascript.Context
-import org.mozilla.javascript.Scriptable
 
 object Const {
     const val UA_NAME = "User-Agent"

@@ -18,7 +18,6 @@
 
 package sduseat.api
 
-import com.google.gson.JsonParser
 import sduseat.SpiderException
 import sduseat.bean.*
 import sduseat.constant.Const.LIB_FIRST_URL
@@ -53,9 +52,11 @@ object Spider {
                 val seats = it.selectFirst("div:nth-child(3) > b")?.text()
                 val unusedSeats = seats?.centerString("今日剩余", "，")
                 val allSeats = seats?.centerString("总量", "")
-                libMap[name!!] = AreaBean(
-                    id.toInt(), name, unusedSeats?.toInt() ?: 0, allSeats?.toInt() ?: 0
-                )
+                name?.let { libName ->
+                    libMap[libName] = AreaBean(
+                        id.toInt(), libName, unusedSeats?.toInt() ?: 0, allSeats?.toInt() ?: 0
+                    )
+                }
             }
         }
         return libMap
@@ -115,7 +116,7 @@ object Spider {
         if (area == null) throw SpiderException("getSeats:无法查找到对应的区域，请检查提供的区域信息")
         val period = try {
             area.periods?.get(periodIndex)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         } ?: throw SpiderException("getSeats:无法查找到对应的时间段Period_${periodIndex}，请检查提供的时间段")
         val url = "$LIB_URL/api.php/spaces_old?" +
@@ -153,6 +154,7 @@ object Spider {
      * @param keyword 请输入预约编号、申请标题
      * @param page 页码
      */
+    @Suppress("unused")
     fun getBook(status: String = "", keyword: String = "", page: Int = 1): List<IBookBean> {
         val res = getProxyClient().newCallResponseBody {
             url("$LIB_URL/user/index/book/p/$page")
@@ -174,6 +176,7 @@ object Spider {
         return bookBeans
     }
 
+    @Suppress("unused")
     fun getCurrentUse(userId: String): IBookBean? {
         val res = getProxyClient().newCallResponseBody {
             url("$LIB_URL/api.php/currentuse?user=$userId")
@@ -192,7 +195,7 @@ object Spider {
                     book.get("nameMerge").asString + ":" + book.get("spaceName").asString,
                     book.getAsJsonObject("beginTime").get("date").asString,
                     book.getAsJsonObject("endTime").get("date").asString,
-                    statusMap[book.get("status").asInt]!!,
+                    statusMap[book.get("status").asInt] ?: "未知状态",
                     book.get("statusname").asString,
                     book.get("signintime").asString,
                     book.get("lastsignintime").asString,

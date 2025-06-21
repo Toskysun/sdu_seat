@@ -33,9 +33,11 @@ class AuthWebVpn(
     deviceId: String,
     retry: Int = 0
 ) : IAuth(userid, password, deviceId, retry) {
-    override val authUrl: String = "https://webvpn.sdu.edu.cn/https/77726476706e69737468656265737421e0f6528f69236c45300d8db9d6562d/cas/login?service=http%3A%2F%2Fseat.lib.sdu.edu.cn%2Fcas%2Findex.php%3Fcallback%3Dhttp%3A%2F%2Fseat.lib.sdu.edu.cn%2Fhome%2Fweb%2Ff_second"
+    override val authUrl: String = "https://webvpn.sdu.edu.cn/https/77726476706e69737468656265737421e0f6528f69236c45300d8db9d6562d/cas/login?service=http%3A%2F%2Flibseat.sdu.edu.cn%2Fcas%2Findex.php%3Fcallback%3Dhttp%3A%2F%2Flibseat.sdu.edu.cn%2Fhome%2Fweb%2Ff_second"
+    // Note: HTTP URL is intentionally embedded in HTTPS WebVPN URL for proper routing
+    @Suppress("HttpUrlsUsage")
     private val libAuthUrl =
-        "https://webvpn.sdu.edu.cn/http/77726476706e69737468656265737421e3f24088693c6152301b8db9d6502720e38b79/cas/index.php?callback=http://seat.lib.sdu.edu.cn/home/web/f_second"
+        "https://webvpn.sdu.edu.cn/http/77726476706e69737468656265737421e3f24088693c6152301b8db9d6502720e38b79/cas/index.php?callback=http://libseat.sdu.edu.cn/home/web/f_second"
 
     companion object {
         var lastSuccessLogin: Long = 0
@@ -49,7 +51,7 @@ class AuthWebVpn(
         //统一身份认证、图书馆认证
         auth()
         //获取access_token
-        access_token = getAccessToken()
+        accessToken = getAccessToken()
         lastSuccessLogin = System.currentTimeMillis()
     }
 
@@ -64,14 +66,14 @@ class AuthWebVpn(
         //登录webvpn
         var res = getProxyClient().newCallResponse(retry) {
             url(authUrl)
-            postForm(HashMap<String, Any>().apply {
-                put("rsa", rsa)
-                put("ul", userid.length)
-                put("pl", password.length)
-                put("lt", lt)
-                put("execution", execution)
-                put("_eventId", _eventId)
-            })
+            postForm(mapOf(
+                "rsa" to rsa,
+                "ul" to userid.length,
+                "pl" to password.length,
+                "lt" to lt,
+                "execution" to execution,
+                "_eventId" to eventId
+            ))
         }
         if (res.code != 200) {
             throw AuthException("阶段1/3：响应状态码为${res.code}, 信息化门户认证失败")

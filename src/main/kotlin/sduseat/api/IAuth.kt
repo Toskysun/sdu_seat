@@ -19,7 +19,6 @@
 package sduseat.api
 
 import sduseat.AuthException
-import sduseat.constant.Const
 import sduseat.constant.Const.DEVICE_URL
 import sduseat.constant.Const.SCRIPT_ENGINE
 import sduseat.constant.Const.evaluateJavaScript
@@ -42,14 +41,14 @@ abstract class IAuth(
     protected var rsa: String = ""
     protected var lt: String = ""
     protected var execution: String = ""
-    protected var _eventId: String = ""
+    protected var eventId: String = ""
 
-    var access_token: String = ""
+    var accessToken: String = ""
     var name: String = ""
     protected var expire: String? = null
 
     fun getRsa(user: String, pwd: String, lt: String): String {
-        return strEnc(user + pwd + lt)
+        return strEnc("$user$pwd$lt")
     }
 
     fun strEnc(str: String): String {
@@ -76,7 +75,7 @@ abstract class IAuth(
                 
                 // 使用备用方法
                 val result = evaluateJavaScript(
-                    js + "\nstrEnc('$str', '1', '2', '3');"
+                    "$js\nstrEnc('$str', '1', '2', '3');"
                 )
                 
                 return result?.toString() ?: throw AuthException("加密结果为空")
@@ -92,11 +91,11 @@ abstract class IAuth(
             val doc = Jsoup.parse(html)
             lt = doc.selectFirst("#lt")?.`val`() ?: ""
             execution = doc.selectFirst("[name=execution]")?.`val`() ?: ""
-            _eventId = doc.selectFirst("[name=_eventId]")?.`val`() ?: ""
-        } catch (e: Exception) {
-            logger.error(e) {}
+            eventId = doc.selectFirst("[name=_eventId]")?.`val`() ?: ""
+        } catch (_: Exception) {
+            // Ignore parsing errors
         }
-        if (lt.isEmpty() || execution.isEmpty() || _eventId.isEmpty()) {
+        if (lt.isEmpty() || execution.isEmpty() || eventId.isEmpty()) {
             throw AuthException("未获取到用户登陆所需的所有信息")
         }
     }
@@ -115,10 +114,10 @@ abstract class IAuth(
                 )
             )
         }
-        val resBody = res.body?.text()!!
+        val resBody = res.body?.text() ?: throw AuthException("设备验证响应为空")
         val resInfo = try {
             GSON.parseString(resBody).asJsonObject?.get("info")?.asString?.trim()
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             //{"info":"binded"}
             val rIndex = resBody.lastIndexOf("\"")
             val lIndex = resBody.lastIndexOf("\"", rIndex - 1)

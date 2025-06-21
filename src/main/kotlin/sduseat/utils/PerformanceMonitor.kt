@@ -22,9 +22,11 @@ import sduseat.constant.Const.logger
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
+@Suppress("unused")
 object PerformanceMonitor {
     private val metrics = ConcurrentHashMap<String, MutableList<Long>>()
 
+    @Suppress("unused")
     fun recordTime(operation: String, block: () -> Unit) {
         val time = measureTimeMillis(block)
         metrics.getOrPut(operation) { mutableListOf() }.add(time)
@@ -42,6 +44,7 @@ object PerformanceMonitor {
         }
     }
 
+    @Suppress("unused")
     fun logMetrics() {
         getMetrics().forEach { (operation, metrics) ->
             logger.info {
@@ -56,6 +59,7 @@ object PerformanceMonitor {
         }
     }
 
+    @Suppress("unused")
     fun reset() {
         metrics.clear()
     }
