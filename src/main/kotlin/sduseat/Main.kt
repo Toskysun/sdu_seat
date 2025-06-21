@@ -136,16 +136,25 @@ fun main(args: Array<String>) {
     
     // 只有在启用提前登录时才创建提前登录任务
     if (config!!.enableEarlyLogin) {
-    val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
-    logger.info { "将在${displayFormat.format(earlyStartTime)}提前开始登录尝试" }
-    
-    val earlyLoginTask = object : TimerTask() {
-        override fun run() {
-            startEarlyLogin(startTime)
+        val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
+        val currentTime = System.currentTimeMillis()
+
+        // 检查当前时间是否已经在提前登录时间范围内
+        if (currentTime >= earlyStartTime.time) {
+            logger.info { "当前时间已在提前登录时间范围内，跳过提前登录任务" }
+            logger.info { "提前登录时间：${displayFormat.format(earlyStartTime)}" }
+            logger.info { "当前时间：${displayFormat.format(Date(currentTime))}" }
+        } else {
+            logger.info { "将在${displayFormat.format(earlyStartTime)}提前开始登录尝试" }
+
+            val earlyLoginTask = object : TimerTask() {
+                override fun run() {
+                    startEarlyLogin(startTime)
+                }
+            }
+            // 提前登录任务
+            time.schedule(earlyLoginTask, earlyStartTime)
         }
-    }
-        // 提前登录任务
-        time.schedule(earlyLoginTask, earlyStartTime)
     } else {
         logger.info { "提前登录功能已禁用" }
     }
