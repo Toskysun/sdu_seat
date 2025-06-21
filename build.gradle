@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.9.24'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
@@ -159,10 +162,10 @@ dependencies {
     implementation "com.sun.mail:jakarta.mail:2.0.1"
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    kotlinOptions {
-        jvmTarget = '21'
-        freeCompilerArgs += ['-Xjsr305=strict']
+tasks.withType(KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_21
+        freeCompilerArgs.addAll(['-Xjsr305=strict'])
     }
 }
 

@@ -55,20 +55,20 @@ object Lib {
             val res = try {
                 getProxyClient().newCallResponseBody(retry) {
                     url(bookUrl)
-                    postForm(HashMap<String, Any>().apply {
-                        put("access_token", auth.access_token)
-                        put("userid", auth.userid)
-                        put("segment", period.id) // bookTimeId
-                        put("type", 1)
-                        put("operateChannel", 2)
-                    })
+                    postForm(mapOf(
+                        "access_token" to auth.accessToken,
+                        "userid" to auth.userid,
+                        "segment" to period.id, // bookTimeId
+                        "type" to 1,
+                        "operateChannel" to 2
+                    ))
                     header(
                         "Referer",
                         "$LIB_URL/web/seat3?area=${area.id}&segment=${period.id}&day=$date&startTime=${period.startTime}&endTime=${period.endTime}"
                     )
                 }.text()
-            } catch (e: SocketTimeoutException) {
-                logger.error() { "预约座位失败：网络请求超时，正在重试" }
+            } catch (_: SocketTimeoutException) {
+                logger.error { "预约座位失败：网络请求超时，正在重试" }
                 continue
             } catch (e: Exception) {
                 logger.error(e) { "预约座位失败：网络请求出错，正在重试" }
@@ -76,14 +76,15 @@ object Lib {
             }
             try {
                 json = GSON.parseString(res).asJsonObject
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 continue
             }
             if (!json.get("msg").asString.contains("预约超时"))
                 break
         }
-        val status = json!!.get("status").asInt
-        val msg = json.get("msg").asString
+        val finalJson = json ?: throw LibException("预约失败：无法解析服务器响应")
+        val status = finalJson.get("status").asInt
+        val msg = finalJson.get("msg").asString
         lastResponseMessage = msg  // 存储最后的响应消息
         logger.info { "预约$date ${period.startTime}-${period.endTime}时间段座位[${area.name}-${seat.name}]返回信息: $msg" }
         if (status == 1) {
@@ -115,16 +116,17 @@ object Lib {
     /**
      * 取消选座
      */
+    @Suppress("unused")
     fun cancelBook(bookBean: IBookBean, auth: IAuth): Boolean {
         val res = getProxyClient().newCallResponseBody {
             url("$LIB_URL/api.php/profile/books/${bookBean.id}")
             postForm(
                 mapOf(
-                    Pair("_method", "delete"),
-                    Pair("id", bookBean.id),
-                    Pair("userid", auth.userid),
-                    Pair("access_token", auth.access_token),
-                    Pair("operateChannel", 2)
+                    "_method" to "delete",
+                    "id" to bookBean.id,
+                    "userid" to auth.userid,
+                    "access_token" to auth.accessToken,
+                    "operateChannel" to 2
                 )
             )
             header(

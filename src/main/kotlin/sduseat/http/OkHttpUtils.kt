@@ -32,10 +32,27 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
 import java.nio.charset.Charset
-import java.util.concurrent.TimeUnit
 import kotlin.math.pow
 
 private val logger = KotlinLogging.logger {}
+
+private fun handleHttpError(response: Response, attempt: Int, maxRetries: Int, requestUrl: String): IOException {
+    val errorBody = response.body?.string() ?: ""
+    val errorMessage = "HTTP ${response.code}: ${response.message}" +
+        if (errorBody.isNotEmpty() && errorBody.length < 100) " - $errorBody" else ""
+
+    logger.warn { "请求失败($attempt/${maxRetries + 1}): $requestUrl, 状态码: ${response.code}" }
+    return IOException(errorMessage)
+}
+
+private fun handleIOException(e: IOException, attempt: Int, maxRetries: Int, requestUrl: String) {
+    logger.warn { "请求异常($attempt/${maxRetries + 1}): $requestUrl, 错误: ${e.message}" }
+
+    if (attempt < maxRetries) {
+        val delayMs = (2.0.pow(attempt.toDouble()) * 1000).toLong().coerceAtMost(10000)
+        Thread.sleep(delayMs)
+    }
+}
 
 fun OkHttpClient.newCallResponse(
     retry: Int = 0,
@@ -53,25 +70,12 @@ fun OkHttpClient.newCallResponse(
             if (response.isSuccessful || response.isRedirect) {
                 return response
             }
-            
-            // 记录更详细的错误信息
-            val errorBody = response.body?.string() ?: ""
-            val errorMessage = "HTTP ${response.code}: ${response.message}" +
-                if (errorBody.isNotEmpty() && errorBody.length < 100) " - $errorBody" else ""
-            
-            lastException = IOException(errorMessage)
-            
-            // 记录日志但继续重试
-            logger.warn { "请求失败(${i+1}/${retry+1}): ${request.url}, 状态码: ${response.code}" }
-            
+
+            lastException = handleHttpError(response, i + 1, retry, request.url.toString())
+
         } catch (e: IOException) {
             lastException = e
-            logger.warn { "请求异常(${i+1}/${retry+1}): ${request.url}, 错误: ${e.message}" }
-            
-            if (i < retry) {
-                val delayMs = (2.0.pow(i.toDouble()) * 1000).toLong().coerceAtMost(10000)
-                Thread.sleep(delayMs)
-            }
+            handleIOException(e, i + 1, retry, request.url.toString())
         }
     }
     throw lastException ?: IOException("Unknown error")
@@ -93,25 +97,12 @@ fun OkHttpClient.newCallResponseBody(
             if (response.isSuccessful || response.isRedirect) {
                 return response.body ?: throw IOException("Empty response body")
             }
-            
-            // 记录更详细的错误信息
-            val errorBody = response.body?.string() ?: ""
-            val errorMessage = "HTTP ${response.code}: ${response.message}" +
-                if (errorBody.isNotEmpty() && errorBody.length < 100) " - $errorBody" else ""
-            
-            lastException = IOException(errorMessage)
-            
-            // 记录日志但继续重试
-            logger.warn { "请求失败(${i+1}/${retry+1}): ${request.url}, 状态码: ${response.code}" }
-            
+
+            lastException = handleHttpError(response, i + 1, retry, request.url.toString())
+
         } catch (e: IOException) {
             lastException = e
-            logger.warn { "请求异常(${i+1}/${retry+1}): ${request.url}, 错误: ${e.message}" }
-            
-            if (i < retry) {
-                val delayMs = (2.0.pow(i.toDouble()) * 1000).toLong().coerceAtMost(10000)
-                Thread.sleep(delayMs)
-            }
+            handleIOException(e, i + 1, retry, request.url.toString())
         }
     }
     throw lastException ?: IOException("Unknown error")
@@ -119,10 +110,9 @@ fun OkHttpClient.newCallResponseBody(
 
 fun ResponseBody.text(encode: String? = null): String {
     val responseBytes = Utf8BomUtils.removeUTF8BOM(bytes())
-    val charsetName: String? = encode
 
-    charsetName?.let {
-        return String(responseBytes, Charset.forName(charsetName))
+    encode?.let {
+        return String(responseBytes, Charset.forName(it))
     }
 
     // 根据http头判断
@@ -130,13 +120,14 @@ fun ResponseBody.text(encode: String? = null): String {
         return String(responseBytes, it)
     }
 
-    return String(responseBytes, Charset.forName(charsetName ?: "UTF-8"))
+    return String(responseBytes, Charset.forName("UTF-8"))
 }
 
 fun ResponseBody.json(encode: String? = null): JsonElement {
     return GSON.parseString(text(encode))
 }
 
+@Suppress("unused")
 fun Request.Builder.addHeaders(headers: Map<String, String>) {
     headers.forEach {
         if (it.key == Const.UA_NAME) {
@@ -171,6 +162,7 @@ fun Request.Builder.postForm(form: Map<String, Any>, encoded: Boolean = false) {
     post(formBody.build())
 }
 
+@Suppress("unused")
 fun Request.Builder.postMultipart(type: String?, form: Map<String, Any>) {
     val multipartBody = MultipartBody.Builder()
     type?.let {
@@ -204,6 +196,7 @@ fun Request.Builder.postMultipart(type: String?, form: Map<String, Any>) {
     post(multipartBody.build())
 }
 
+@Suppress("unused")
 fun Request.Builder.postJson(json: String?) {
     json?.let {
         val requestBody = json.toRequestBody("application/json; charset=UTF-8".toMediaType())

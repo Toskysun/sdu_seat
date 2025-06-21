@@ -1,20 +1,22 @@
 /*
  * Copyright (C) 2025-2026 Toskysun
- * 
+ *
  * This file is part of Sdu-Seat
  * Sdu-Seat is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Sdu-Seat is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Sdu-Seat.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+@file:Suppress("UNUSED_PARAMETER")
 
 package sduseat.utils
 
@@ -23,14 +25,12 @@ import com.google.gson.internal.LinkedTreeMap
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonWriter
 import sduseat.constant.Const.logger
-import mu.KotlinLogging
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.lang.Exception
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import kotlin.math.ceil
-import kotlin.math.log
 
 val GSON: Gson by lazy {
     GsonBuilder()
@@ -55,6 +55,7 @@ inline fun <reified T> Gson.fromJsonObject(json: String?): T? {
     }.getOrNull()
 }
 
+@Suppress("unused")
 inline fun <reified T> Gson.fromJsonArray(json: String?): List<T>? {
     return kotlin.runCatching {
         fromJson(json, ParameterizedTypeImpl(T::class.java)) as? List<T>
@@ -63,6 +64,7 @@ inline fun <reified T> Gson.fromJsonArray(json: String?): List<T>? {
     }.getOrNull()
 }
 
+@Suppress("unused")
 fun Gson.writeToOutputStream(out: OutputStream, any: Any) {
     val writer = JsonWriter(OutputStreamWriter(out, "UTF-8"))
     writer.setIndent("  ")
@@ -80,6 +82,7 @@ fun Gson.writeToOutputStream(out: OutputStream, any: Any) {
     writer.close()
 }
 
+@Suppress("unused", "UNUSED_PARAMETER", "EXTENSION_SHADOWED_BY_MEMBER")
 fun Gson.parseString(json: String): JsonElement {
     try {
         return JsonParser.parseString(json)
@@ -105,6 +108,7 @@ class ParameterizedTypeImpl(private val clazz: Class<*>) : ParameterizedType {
  */
 class IntJsonDeserializer : JsonDeserializer<Int?> {
 
+    @Suppress("UNUSED_PARAMETER")
     override fun deserialize(
         json: JsonElement,
         typeOfT: Type?,
@@ -133,6 +137,7 @@ class MapDeserializerDoubleAsIntFix :
     JsonDeserializer<Map<String, Any?>?> {
 
     @Throws(JsonParseException::class)
+    @Suppress("UNUSED_PARAMETER")
     override fun deserialize(
         jsonElement: JsonElement,
         type: Type,

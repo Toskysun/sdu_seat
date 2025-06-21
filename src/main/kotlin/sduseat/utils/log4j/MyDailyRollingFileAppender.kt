@@ -34,7 +34,7 @@ class MyDailyRollingFileAppender : FileAppender {
     /**
      * The default maximum file size is 10MB.
      */
-    protected var maxFileSize = 10 * 1024 * 1024
+    private var maxFileSize = 10 * 1024 * 1024
     /** Returns the value of the **DatePattern** option.  */
     /**
      * The **DatePattern** takes a string in the same format as expected by
@@ -71,18 +71,19 @@ class MyDailyRollingFileAppender : FileAppender {
     private val now = Date()
     private var sdf: SimpleDateFormat? = null
     private val rollingCalendar = MyRollingCalendar()
-    var checkPeriod = TOP_OF_TROUBLE
 
     /**
      * The default constructor does nothing.
      */
-    constructor() {}
+    @Suppress("unused")
+    constructor()
 
     /**
      * Instantiate a `DailyRollingFileAppender` and open the file designated by
      * `filename`. The opened filename will become the ouput destination for
      * this appender.
      */
+    @Suppress("unused")
     constructor(layout: Layout?, filename: String?, datePattern: String?) : super(layout, filename, true) {
         this.datePattern = datePattern
         activateOptions()
@@ -93,11 +94,11 @@ class MyDailyRollingFileAppender : FileAppender {
         LogLog.debug("Max backup file kept: $maxBackupIndex.")
         if (datePattern != null && fileName != null) {
             now.time = System.currentTimeMillis()
-            sdf = SimpleDateFormat(datePattern)
+            sdf = SimpleDateFormat(datePattern!!)
             val type = computeCheckPeriod()
             printPeriodicity(type)
             rollingCalendar.type = type
-            val file = File(fileName)
+            val file = File(fileName!!)
             scheduledFilename = fileName + sdf!!.format(Date(file.lastModified()))
         } else {
             LogLog.error("Either File or DatePattern options are not set for appender [$name].")
@@ -106,13 +107,13 @@ class MyDailyRollingFileAppender : FileAppender {
 
     fun printPeriodicity(type: Int) {
         when (type) {
-            TOP_OF_MINUTE -> LogLog.debug("Appender [[+name+]] to be rolled every minute.")
+            TOP_OF_MINUTE -> LogLog.debug("Appender [$name] to be rolled every minute.")
             TOP_OF_HOUR -> LogLog.debug("Appender [$name] to be rolled on top of every hour.")
             HALF_DAY -> LogLog.debug("Appender [$name] to be rolled at midday and midnight.")
             TOP_OF_DAY -> LogLog.debug("Appender [$name] to be rolled at midnight.")
             TOP_OF_WEEK -> LogLog.debug("Appender [$name] to be rolled at start of week.")
             TOP_OF_MONTH -> LogLog.debug("Appender [$name] to be rolled at start of every month.")
-            else -> LogLog.warn("Unknown periodicity for appender [[+name+]].")
+            else -> LogLog.warn("Unknown periodicity for appender [$name].")
         }
     }
 
@@ -124,7 +125,7 @@ class MyDailyRollingFileAppender : FileAppender {
             return TOP_OF_TROUBLE
         }
         for (i in TOP_OF_MINUTE..TOP_OF_MONTH) {
-            val simpleDateFormat = SimpleDateFormat(datePattern)
+            val simpleDateFormat = SimpleDateFormat(datePattern!!)
             simpleDateFormat.timeZone = gmtTimeZone // do all date formatting in
             // GMT
             val r0 = simpleDateFormat.format(epoch)
@@ -133,7 +134,7 @@ class MyDailyRollingFileAppender : FileAppender {
             val r1 = simpleDateFormat.format(next)
 
             // System.out.println("Type = "+i+", r0 = "+r0+", r1 = "+r1);
-            if (r0 != null && r1 != null && r0 != r1) {
+            if (r0 != r1) {
                 return i
             }
         }
@@ -150,7 +151,7 @@ class MyDailyRollingFileAppender : FileAppender {
             errorHandler.error("Missing DatePattern option in rollOver().")
             return
         }
-        val datedFilename = fileName + sdf!!.format(now)
+        val datedFilename = fileName!! + sdf!!.format(now)
         // It is too early to roll over because we are still within the
         // bounds of the current interval. Rollover will occur once the
         // next interval is reached.
@@ -160,11 +161,11 @@ class MyDailyRollingFileAppender : FileAppender {
 
         // close current file, and rename it to datedFilename
         closeFile()
-        val target = File(scheduledFilename)
+        val target = File(scheduledFilename!!)
         if (target.exists()) {
             target.delete()
         }
-        var file = File(fileName)
+        var file = File(fileName!!)
         val result = file.renameTo(target)
         if (result) {
             LogLog.debug("$fileName -> $scheduledFilename")
@@ -172,7 +173,7 @@ class MyDailyRollingFileAppender : FileAppender {
             // If maxBackups <= 0, then there is no file renaming to be done.
             if (maxBackupIndex > 0) {
                 // Delete the oldest file, to keep system happy.
-                file = File(fileName + dateBefore())
+                file = File(fileName!! + dateBefore())
 
                 // 删除很久以前的历史log文件
                 deleteAncientFilesIfExists(file)
@@ -181,13 +182,13 @@ class MyDailyRollingFileAppender : FileAppender {
                 }
             }
         } else {
-            LogLog.error("Failed to rename [[+fileName+]] to [[+scheduledFilename+]].")
+            LogLog.error("Failed to rename [$fileName] to [$scheduledFilename].")
         }
         try {
             // This will also close the file. This is OK since multiple close operations
             // are safe.
-            this.setFile(fileName, false, bufferedIO, bufferSize)
-        } catch (e: IOException) {
+            this.setFile(fileName!!, false, bufferedIO, bufferSize)
+        } catch (_: IOException) {
             errorHandler.error("setFile($fileName, false) call failed.")
         }
         scheduledFilename = datedFilename
@@ -200,7 +201,7 @@ class MyDailyRollingFileAppender : FileAppender {
     private fun deleteAncientFilesIfExists(oldestFile: File) {
         // 找出久远日志文件列表
         val ancientfiles = oldestFile.parentFile.listFiles { pathname ->
-            (pathname.path.replace("\\\\".toRegex(), "/").startsWith(fileName.replace("\\\\".toRegex(), "/"))
+            (pathname.path.replace("\\\\".toRegex(), "/").startsWith(fileName!!.replace("\\\\".toRegex(), "/"))
                     && pathname.name < oldestFile.name)
         }
 
@@ -214,7 +215,7 @@ class MyDailyRollingFileAppender : FileAppender {
     private fun dateBefore(): String {
         var dataAnte = ""
         if (datePattern != null) {
-            val simpleDateFormat = SimpleDateFormat(datePattern)
+            val simpleDateFormat = SimpleDateFormat(datePattern!!)
             dataAnte = simpleDateFormat
                 .format(Date(rollingCalendar.getPastCheckMillis(Date(), maxBackupIndex)))
         }
@@ -246,14 +247,14 @@ class MyDailyRollingFileAppender : FileAppender {
             if (size >= maxFileSize) {
                 // close current file, and rename it
                 closeFile()
-                val rollingFileName = fileName + sdf!!.format(now) + '.' + currentTimeMillis
-                File(fileName).renameTo(File(rollingFileName))
+                val rollingFileName = fileName!! + sdf!!.format(now) + '.' + currentTimeMillis
+                File(fileName!!).renameTo(File(rollingFileName))
                 try {
                     // This will also close the file. This is OK since multiple close
                     // operations
                     // are safe.
-                    this.setFile(fileName, false, bufferedIO, bufferSize)
-                } catch (e: IOException) {
+                    this.setFile(fileName!!, false, bufferedIO, bufferSize)
+                } catch (_: IOException) {
                     errorHandler.error("setFile($fileName, false) call failed.")
                 }
             }
@@ -305,7 +306,8 @@ class MyDailyRollingFileAppender : FileAppender {
         /**
          * The gmtTimeZone is used only in computeCheckPeriod() method.
          */
-        val gmtTimeZone = TimeZone.getTimeZone("GMT")
+        @JvmStatic
+        val gmtTimeZone: TimeZone = TimeZone.getTimeZone("GMT")
     }
 }
 
@@ -314,10 +316,10 @@ class MyDailyRollingFileAppender : FileAppender {
  * type and the current time, it computes the past maxBackupIndex date.
  */
 internal class MyRollingCalendar : GregorianCalendar {
-    var type = TOP_OF_TROUBLE
+    var type = MyDailyRollingFileAppender.TOP_OF_TROUBLE
 
-    constructor() : super() {}
-    constructor(tz: TimeZone?, locale: Locale?) : super(tz, locale) {}
+    constructor() : super()
+    constructor(tz: TimeZone?, locale: Locale?) : super(tz, locale)
 
     fun getPastCheckMillis(now: Date?, maxBackupIndex: Int): Long {
         return getPastDate(now, maxBackupIndex).time
@@ -326,9 +328,9 @@ internal class MyRollingCalendar : GregorianCalendar {
     fun getPastDate(now: Date?, maxBackupIndex: Int): Date {
         setTime(now)
         when (type) {
-            TOP_OF_MINUTE -> this[MINUTE] = this[MINUTE] - maxBackupIndex
-            TOP_OF_HOUR -> this[HOUR_OF_DAY] = this[HOUR_OF_DAY] - maxBackupIndex
-            HALF_DAY -> {
+            MyDailyRollingFileAppender.TOP_OF_MINUTE -> this[MINUTE] = this[MINUTE] - maxBackupIndex
+            MyDailyRollingFileAppender.TOP_OF_HOUR -> this[HOUR_OF_DAY] = this[HOUR_OF_DAY] - maxBackupIndex
+            MyDailyRollingFileAppender.HALF_DAY -> {
                 val hour = get(HOUR_OF_DAY)
                 if (hour < 12) {
                     this[HOUR_OF_DAY] = 12
@@ -337,12 +339,12 @@ internal class MyRollingCalendar : GregorianCalendar {
                 }
                 this[DAY_OF_MONTH] = this[DAY_OF_MONTH] - maxBackupIndex
             }
-            TOP_OF_DAY -> this[DATE] = this[DATE] - maxBackupIndex
-            TOP_OF_WEEK -> {
+            MyDailyRollingFileAppender.TOP_OF_DAY -> this[DATE] = this[DATE] - maxBackupIndex
+            MyDailyRollingFileAppender.TOP_OF_WEEK -> {
                 this[DAY_OF_WEEK] = firstDayOfWeek
                 this[WEEK_OF_YEAR] = this[WEEK_OF_YEAR] - maxBackupIndex
             }
-            TOP_OF_MONTH -> this[MONTH] = this[MONTH] - maxBackupIndex
+            MyDailyRollingFileAppender.TOP_OF_MONTH -> this[MONTH] = this[MONTH] - maxBackupIndex
             else -> throw IllegalStateException("Unknown periodicity type.")
         }
         return getTime()
@@ -355,18 +357,18 @@ internal class MyRollingCalendar : GregorianCalendar {
     fun getNextCheckDate(now: Date?): Date {
         setTime(now)
         when (type) {
-            TOP_OF_MINUTE -> {
+            MyDailyRollingFileAppender.TOP_OF_MINUTE -> {
                 this[SECOND] = 0
                 this[MILLISECOND] = 0
                 add(MINUTE, 1)
             }
-            TOP_OF_HOUR -> {
+            MyDailyRollingFileAppender.TOP_OF_HOUR -> {
                 this[MINUTE] = 0
                 this[SECOND] = 0
                 this[MILLISECOND] = 0
                 add(HOUR_OF_DAY, 1)
             }
-            HALF_DAY -> {
+            MyDailyRollingFileAppender.HALF_DAY -> {
                 this[MINUTE] = 0
                 this[SECOND] = 0
                 this[MILLISECOND] = 0
@@ -378,14 +380,14 @@ internal class MyRollingCalendar : GregorianCalendar {
                     add(DAY_OF_MONTH, 1)
                 }
             }
-            TOP_OF_DAY -> {
+            MyDailyRollingFileAppender.TOP_OF_DAY -> {
                 this[HOUR_OF_DAY] = 0
                 this[MINUTE] = 0
                 this[SECOND] = 0
                 this[MILLISECOND] = 0
                 add(DATE, 1)
             }
-            TOP_OF_WEEK -> {
+            MyDailyRollingFileAppender.TOP_OF_WEEK -> {
                 this[DAY_OF_WEEK] = firstDayOfWeek
                 this[HOUR_OF_DAY] = 0
                 this[MINUTE] = 0
@@ -393,7 +395,7 @@ internal class MyRollingCalendar : GregorianCalendar {
                 this[MILLISECOND] = 0
                 add(WEEK_OF_YEAR, 1)
             }
-            TOP_OF_MONTH -> {
+            MyDailyRollingFileAppender.TOP_OF_MONTH -> {
                 this[DATE] = 1
                 this[HOUR_OF_DAY] = 0
                 this[MINUTE] = 0
@@ -406,14 +408,5 @@ internal class MyRollingCalendar : GregorianCalendar {
         return getTime()
     }
 
-    companion object {
-        private const val serialVersionUID = 1L
-        const val TOP_OF_TROUBLE = -1
-        const val TOP_OF_MINUTE = 0
-        const val TOP_OF_HOUR = 1
-        const val HALF_DAY = 2
-        const val TOP_OF_DAY = 3
-        const val TOP_OF_WEEK = 4
-        const val TOP_OF_MONTH = 5
-    }
+
 }

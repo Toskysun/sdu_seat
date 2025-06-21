@@ -71,9 +71,30 @@ val spiderRunnable = Runnable {
     }
 }
 
+/**
+ * 创建认证实例
+ */
+fun createAuth(): IAuth {
+    return if (config!!.webVpn) {
+        AuthWebVpn(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
+    } else {
+        Auth(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
+    }
+}
+
+/**
+ * 根据配置的时间格式创建对应的显示格式
+ */
+fun createDisplayFormat(): SimpleDateFormat {
+    return when (config!!.time!!.length) {
+        12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+        8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
+    }
+}
+
 val authRunnable = Runnable {
-    auth = if (config!!.webVpn) AuthWebVpn(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
-    else Auth(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
+    auth = createAuth()
     auth!!.login()
     needReLogin = false
 }
@@ -108,11 +129,7 @@ fun main(args: Array<String>) {
         startTime = Date(startTime.time + ONE_DAY)
     }
     // 根据配置的时间格式创建对应的显示格式
-    val displayFormat = when (config!!.time!!.length) {
-        12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-        8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-        else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
-    }
+    val displayFormat = createDisplayFormat()
     logger.info { "请等待到${displayFormat.format(startTime)}" }
     
     val time = Timer()
@@ -192,7 +209,7 @@ fun loginAndGetSeats(judgeExpire: Boolean = true) {
             authRes.get()
         } catch (e: Exception) {
             if (e.cause is SocketTimeoutException) {
-                logger.error() { "登录失败：网络请求超时" }
+                logger.error { "登录失败：网络请求超时" }
             } else {
                 logger.error(e) { }
             }
@@ -206,7 +223,7 @@ fun loginAndGetSeats(judgeExpire: Boolean = true) {
         spiderRes?.get()
     } catch (e: Exception) {
         if (e.cause is SocketTimeoutException) {
-            logger.error() { "获取座位信息失败：网络请求超时" }
+            logger.error { "获取座位信息失败：网络请求超时" }
         } else {
             logger.error(e) { }
         }
@@ -643,8 +660,7 @@ fun startEarlyLogin(bookTime: Date) {
             logger.info { "登录尝试 $attemptCount/${config!!.maxLoginAttempts}" }
             // 清除之前的cookie，强制重新登录
             cookieCathe.clear()
-            auth = if (config!!.webVpn) AuthWebVpn(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
-            else Auth(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
+            auth = createAuth()
             auth!!.login()
 
             // 提前获取座位信息
@@ -664,11 +680,7 @@ fun startEarlyLogin(bookTime: Date) {
     // 最终状态报告
     if (loginSuccess) {
         // 根据配置的时间格式创建对应的显示格式
-        val displayFormat = when (config!!.time!!.length) {
-            12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-            8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-            else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
-        }
+        val displayFormat = createDisplayFormat()
         val bookTimeStr = displayFormat.format(bookTime)
         logger.info { "提前登录任务完成，登录状态正常，等待预约时间：$bookTimeStr" }
     } else {
@@ -678,11 +690,7 @@ fun startEarlyLogin(bookTime: Date) {
         // 发送登录失败邮件通知
         config!!.emailNotification?.let { emailConfig ->
             // 根据配置的时间格式创建对应的显示格式
-            val displayFormat = when (config!!.time!!.length) {
-                12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-                8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
-            }
+            val displayFormat = createDisplayFormat()
 
             val subject = "图书馆座位预约系统登录失败通知"
             val content = """

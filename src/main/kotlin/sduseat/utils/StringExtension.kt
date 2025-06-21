@@ -25,22 +25,19 @@ package sduseat.utils
  * @return 返回 String
  */
 fun String.centerString(left: String?, right: String?): String {
-    val result: String
-    var zLen: Int
-    if (left == null || left.isEmpty()) {
-        zLen = 0
+    val startIndex = if (left.isNullOrEmpty()) {
+        0
     } else {
-        zLen = indexOf(left)
-        if (zLen > -1) {
-            zLen += left.length
-        } else {
-            zLen = 0
-        }
+        val leftIndex = indexOf(left)
+        if (leftIndex > -1) leftIndex + left.length else 0
     }
-    var yLen = indexOf(right!!, zLen)
-    if (yLen < 0 || right.isEmpty()) {
-        yLen = length
+
+    val endIndex = if (right.isNullOrEmpty()) {
+        length
+    } else {
+        val rightIndex = indexOf(right, startIndex)
+        if (rightIndex < 0) length else rightIndex
     }
-    result = substring(zLen, yLen)
-    return result
+
+    return substring(startIndex, endIndex)
 }

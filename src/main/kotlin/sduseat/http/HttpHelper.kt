@@ -108,7 +108,7 @@ fun getProxyClient(proxy: String? = null, allowRedirect: Boolean = true): OkHttp
         username = group.groupValues[4].split("@")[1]
         password = group.groupValues[4].split("@")[2]
     }
-    if (type != "direct" && host != "") {
+    if (host.isNotEmpty()) {
         val builder = client.newBuilder()
         if (type == "http") {
             builder.proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(host, port)))
