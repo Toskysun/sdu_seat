@@ -30,7 +30,6 @@ import sduseat.constant.Const.ONE_DAY
 import sduseat.constant.Const.dateFormat
 import mu.KotlinLogging
 import sduseat.http.cookieCathe
-import sduseat.utils.JsUtils
 import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -57,7 +56,7 @@ val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntim
             if (!awaitTermination(60, TimeUnit.SECONDS)) {
                 shutdownNow()
             }
-        } catch (e: InterruptedException) {
+        } catch (_: InterruptedException) {
             shutdownNow()
         }
     })
@@ -95,27 +94,33 @@ fun main(args: Array<String>) {
     } else {
         try {
             loginAndGetSeats()
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
         }
     }
     val sdf = SimpleDateFormat("yyyy-MM-dd " + config!!.time)
-    var startTime = if (config!!.time!!.length == 8) {
-        SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(sdf.format(Date()))
-    } else {
-        SimpleDateFormat("yyyy-MM-dd HH:mm").parse(sdf.format(Date()))
+    var startTime = when (config!!.time!!.length) {
+        12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(sdf.format(Date()))
+        8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(sdf.format(Date()))
+        else -> SimpleDateFormat("yyyy-MM-dd HH:mm").parse(sdf.format(Date()))
     }
     // 如果已过当天设置时间，修改首次运行时间为明天
     if (System.currentTimeMillis() > startTime.time) {
         startTime = Date(startTime.time + ONE_DAY)
     }
-    logger.info { "请等待到${sdf.format(startTime)}" }
+    // 根据配置的时间格式创建对应的显示格式
+    val displayFormat = when (config!!.time!!.length) {
+        12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+        8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
+    }
+    logger.info { "请等待到${displayFormat.format(startTime)}" }
     
     val time = Timer()
     
     // 只有在启用提前登录时才创建提前登录任务
     if (config!!.enableEarlyLogin) {
     val earlyStartTime = Date(startTime.time - TimeUnit.MINUTES.toMillis(config!!.earlyLoginMinutes.toLong()))
-    logger.info { "将在${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(earlyStartTime)}提前开始登录尝试" }
+    logger.info { "将在${displayFormat.format(earlyStartTime)}提前开始登录尝试" }
     
     val earlyLoginTask = object : TimerTask() {
         override fun run() {
@@ -160,7 +165,7 @@ fun printHelp() {
           },
           "filterRule": "",
           "only": false,
-          "time": "06:02",
+          "time": "06:02:30.500",
           "period": "08:00-22:30",
           "retry": 10,
           "retryInterval": 2,
@@ -371,7 +376,6 @@ fun bookTask() {
             val periodTime = "${periods[periodKey]!!.startTime}-${periods[periodKey]!!.endTime}"
             val seats = querySeats[periodKey]!!
             val availableSeats = seats.filter { it.status == 1 }
-            val unavailableSeats = seats.filter { it.status != 1 }
             val allSeatsInArea = allSeats[periodKey]!!
             val otherAvailableSeats = if (!config!!.only) {
                 allSeatsInArea.filter { it.status == 1 }
@@ -456,13 +460,8 @@ fun bookSingleSeat(
     
     // 检查是否返回访问频繁的信息
     if (Lib.lastResponseMessage?.contains("访问频繁") == true) {
-        val timePattern = "请(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})后重试".toRegex()
-        val matchResult = timePattern.find(Lib.lastResponseMessage!!)
-        if (matchResult != null) {
-            val frequentAccessTime = matchResult.groupValues[1]
-            // 抛出异常，让上层处理
-            throw LibException("访问频繁！${Lib.lastResponseMessage}")
-        }
+        // 抛出异常，让上层处理
+        throw LibException("访问频繁！${Lib.lastResponseMessage}")
     }
     
     // 检查是否返回了预约失败的信息
@@ -636,7 +635,9 @@ fun startEarlyLogin(bookTime: Date) {
     var loginSuccess = false
     val loginErrors = mutableListOf<String>()
     
-    while (attemptCount < config!!.maxLoginAttempts && System.currentTimeMillis() < bookTime.time && !loginSuccess) {
+    while (attemptCount < config!!.maxLoginAttempts && System.currentTimeMillis() < bookTime.time) {
+        if (loginSuccess) break
+
         attemptCount++
         try {
             logger.info { "登录尝试 $attemptCount/${config!!.maxLoginAttempts}" }
@@ -645,15 +646,14 @@ fun startEarlyLogin(bookTime: Date) {
             auth = if (config!!.webVpn) AuthWebVpn(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
             else Auth(config!!.userid!!, config!!.passwd!!, config!!.deviceId!!, config!!.maxLoginAttempts)
             auth!!.login()
-            
+
             // 提前获取座位信息
             getAllSeats()
             needReLogin = false
-            
+
             // 如果登录成功，记录日志并设置标志位
             logger.info { "提前登录成功，已准备好进行预约" }
             loginSuccess = true
-            break // 登录成功后立即退出循环
         } catch (e: Exception) {
             val errorMsg = "提前登录尝试失败: ${e.message}"
             logger.error { errorMsg }
@@ -663,7 +663,13 @@ fun startEarlyLogin(bookTime: Date) {
     
     // 最终状态报告
     if (loginSuccess) {
-        val bookTimeStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(bookTime)
+        // 根据配置的时间格式创建对应的显示格式
+        val displayFormat = when (config!!.time!!.length) {
+            12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+            8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+            else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
+        }
+        val bookTimeStr = displayFormat.format(bookTime)
         logger.info { "提前登录任务完成，登录状态正常，等待预约时间：$bookTimeStr" }
     } else {
         val warningMsg = "提前登录任务完成，但登录状态异常或已过期，将在预约时重新尝试"
@@ -671,18 +677,25 @@ fun startEarlyLogin(bookTime: Date) {
         
         // 发送登录失败邮件通知
         config!!.emailNotification?.let { emailConfig ->
+            // 根据配置的时间格式创建对应的显示格式
+            val displayFormat = when (config!!.time!!.length) {
+                12 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+                8 -> SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                else -> SimpleDateFormat("yyyy-MM-dd HH:mm")
+            }
+
             val subject = "图书馆座位预约系统登录失败通知"
             val content = """
                 |提前登录失败！
                 |尝试次数：$attemptCount/${config!!.maxLoginAttempts}
-                |预约时间：${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(bookTime)}
+                |预约时间：${displayFormat.format(bookTime)}
                 |
                 |失败详情：
                 |${loginErrors.joinToString("\n|")}
                 |
                 |系统将在预约时间重新尝试登录。
             """.trimMargin()
-            
+
             sduseat.utils.EmailUtils.sendEmail(emailConfig, subject, content)
         }
     }

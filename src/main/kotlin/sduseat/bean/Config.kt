@@ -37,7 +37,7 @@ private val logger = KotlinLogging.logger {}
  * - seats: 预约座位信息
  * - filterRule: 座位筛选规则
  * - only: 是否仅预约指定座位
- * - time: 运行时间，格式为"HH:mm[:ss]"，例如"06:02"、"12:32:00"
+ * - time: 运行时间，格式为"HH:mm[:ss[.SSS]]"，例如"06:02"、"12:32:00"、"12:32:00.500"
  * - period: 预约时间段，格式为"HH:mm-HH:mm"，例如"08:00-22:30"
  * - retry: 预约重试次数
  * - retryInterval: 预约重试间隔（秒）
