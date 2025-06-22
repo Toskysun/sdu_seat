@@ -266,9 +266,10 @@ fun startBook() {
             // 其他异常情况，继续重试
             logger.error(e) { "预约失败，将重试" }
         }
-        if (i < config!!.retry)
+        if (i < config!!.retry) {
             logger.info { "尝试预约${i + 1}/${config!!.retry}失败，将在${config!!.retryInterval}秒后重试..." }
-        Thread.sleep((config!!.retryInterval * 1000).toLong())
+            Thread.sleep((config!!.retryInterval * 1000).toLong())
+        }
     }
     
     // 如果所有尝试都失败，发送邮件通知
@@ -389,9 +390,8 @@ fun bookTask() {
                 // 重新抛出异常，让上层处理
                 throw e
             }
-            
-            // 在每个时段预约之间添加短暂延迟，避免触发访问频繁限制
-            Thread.sleep(3000)
+
+            // 移除固定延迟，只使用配置文件中的 retryInterval 设置
         }
     }
     
@@ -479,9 +479,8 @@ fun bookSingleSeat(
     periodIndex: Int,
     periodTime: String
 ): Boolean {
-    // 在请求之前添加短暂延迟，避免触发访问频繁限制
-    Thread.sleep(1000)
-    
+    // 移除固定延迟，立即进行预约请求以提高速度
+
     val res = Lib.book(seat, date, auth!!, periodIndex, config!!.retry)
     
     // 检查是否返回访问频繁的信息
