@@ -58,6 +58,9 @@ var needReLogin = false // 是否需要重新登录
 var directSeatsCache: Map<String, Map<String, SeatBean>>? = null // 缓存直接获取的座位信息
 val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2).apply {
     Runtime.getRuntime().addShutdownHook(Thread {
+        // 停止保活机制
+        Lib.stopKeepAlive()
+
         shutdown()
         try {
             if (!awaitTermination(Const.THREAD_POOL_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
@@ -190,12 +193,16 @@ fun findMatchingArea(areaMap: Map<Int, AreaInfo>, libName: String, subLibName: S
 
             // 根据seats配置选择最合适的具体区域
             val configuredSeatAreas = config?.seats?.keys ?: emptySet()
+            val matchedAreas = mutableListOf<AreaInfo>()
             for (seatAreaName in configuredSeatAreas) {
                 val matchingSpecificArea = specificAreas.find { it.name == seatAreaName }
                 if (matchingSpecificArea != null) {
-                    logger.info { "根据seats配置选择具体区域: ${matchingSpecificArea.name} (ID: ${matchingSpecificArea.id})" }
-                    return matchingSpecificArea
+                    matchedAreas.add(matchingSpecificArea)
                 }
+            }
+
+            if (matchedAreas.isNotEmpty()) {
+                return matchedAreas.first() // 返回第一个作为主要区域
             }
 
             // 如果没有匹配的具体区域，返回第一个具体区域
@@ -755,6 +762,10 @@ fun loginAndGetSeats(judgeExpire: Boolean = true) {
             authRes.get()
             val loginEndTime = System.currentTimeMillis()
             logger.info { "[登录完成] 耗时: ${loginEndTime - loginStartTime}ms" }
+
+            // 不再使用保活机制，改为智能重新认证
+            logger.info { "[认证策略] 使用智能重新认证策略，检测到失效时自动重新认证" }
+
             logger.info { "================================================================" }
         } catch (e: Exception) {
             // 检查是否是需要Cookie的认证异常
@@ -1100,7 +1111,48 @@ fun bookSingleSeat(
     // 检查是否需要重新认证
     if (res == 2) {
         logger.warn { "座位 ${seat.area.name}-${seat.name} 预约失败，需要重新认证: ${Lib.lastResponseMessage}" }
-        logger.warn { "需要重新认证，请重新获取微信Cookie并更新配置文件" }
+
+        // 智能重新认证：最多尝试3次
+        for (attempt in 1..3) {
+            logger.info { "尝试第${attempt}次重新认证..." }
+            try {
+                auth = null
+                cookieCathe.clear()
+
+                // 短暂等待，避免频繁请求
+                Thread.sleep(1000)
+
+                auth = createAuth()
+
+                if (auth != null) {
+                    logger.info { "第${attempt}次重新认证成功，再次尝试预约座位: ${seat.area.name}-${seat.name}" }
+                    val retryRes = Lib.book(seat, date, auth!!, periodIndex, 0)
+
+                    if (retryRes == 1) {
+                        logger.info { "重新认证后预约成功！" }
+                        return true
+                    } else if (retryRes == 2) {
+                        logger.warn { "第${attempt}次重新认证后仍然失败，继续尝试..." }
+                        continue
+                    } else {
+                        logger.warn { "重新认证后预约失败: ${Lib.lastResponseMessage}" }
+                        return false
+                    }
+                } else {
+                    logger.warn { "第${attempt}次重新认证失败，继续尝试..." }
+                    continue
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "第${attempt}次重新认证异常" }
+                if (attempt == 3) {
+                    logger.warn { "所有重新认证尝试都失败，需要重新获取微信Cookie并更新配置文件" }
+                    needReLogin = true
+                    return false
+                }
+            }
+        }
+
+        logger.warn { "所有重新认证尝试都失败，需要重新获取微信Cookie并更新配置文件" }
         needReLogin = true
         return false
     }
@@ -1270,7 +1322,6 @@ fun getAllSeats() {
 
 
     //直接获取座位信息（跳过复杂的区域层级）
-    logger.info { "正在获取座位信息" }
     val seatsByArea = try {
         Spider.getSeatsForConfiguredAreas(config!!.seats!!.keys, date, "08:00", "22:30", config!!.retry)
     } catch (e: Exception) {
@@ -1676,5 +1727,40 @@ fun parseCookieAndUpdateConfig(cookieString: String): Boolean {
         println("解析Cookie失败: ${e.message}")
         return false
     }
+}
+
+/**
+ * 启动会话监控，定期检查并重新认证
+ */
+fun startSessionMonitoring() {
+    val sessionMonitor = Timer()
+    sessionMonitor.scheduleAtFixedRate(object : TimerTask() {
+        override fun run() {
+            try {
+                if (auth != null && !Lib.validateSession(auth!!)) {
+                    logger.warn { "[会话监控] 检测到会话失效，尝试重新认证..." }
+                    try {
+                        auth = null
+                        cookieCathe.clear()
+                        auth = createAuth()
+                        if (auth != null) {
+                            logger.info { "[会话监控] 重新认证成功" }
+                        } else {
+                            logger.warn { "[会话监控] 重新认证失败" }
+                        }
+                    } catch (e: Exception) {
+                        logger.error(e) { "[会话监控] 重新认证异常" }
+                    }
+                }
+            } catch (e: Exception) {
+                logger.debug(e) { "[会话监控] 监控异常" }
+            }
+        }
+    }, 60000, 60000) // 每60秒检查一次
+
+    // 在程序退出时停止监控
+    Runtime.getRuntime().addShutdownHook(Thread {
+        sessionMonitor.cancel()
+    })
 }
 

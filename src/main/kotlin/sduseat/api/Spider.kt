@@ -535,7 +535,11 @@ object Spider {
             }
         }
 
-        logger.info { "成功获取 ${seatsByArea.size} 个区域的座位信息" }
+        val areaDetails = seatsByArea.keys.map { areaName ->
+            val areaId = AREA_ID_MAPPING[areaName] ?: "未知"
+            "$areaName (ID: $areaId)"
+        }.joinToString(", ")
+        logger.info { "区域：$areaDetails" }
         return seatsByArea
     }
 
