@@ -1,0 +1,38 @@
+{
+  "_comment": "山东大学图书馆自动选座配置文件示例",
+  "_notice": "重要：必须手动配置wechatSession中的Cookie值，Cookie只能在微信公众号环境中获取",
+  "_instruction": "获取Cookie方法：1.手机微信中访问 http://seatwx.lib.sdu.edu.cn/ 并登录 2.使用抓包工具(如HttpCanary)捕获请求 3.从HTTP请求头中提取Cookie值",
+  "_warning": "普通浏览器无法获取有效的微信OAuth Cookie，必须使用手机端微信+抓包工具",
+  "userid": "你的学号",
+  "deviceId": "设备ID（可选）",
+  "area": "趵突泉馆-一楼",
+  "seats": {
+    "趵突泉阅览室112": ["21","20","11","12","18","19","13","06","07","08","10","14","05","09"],
+    "趵突泉专业阅览室104": ["11","08","14"]
+  },
+  "filterRule": "",
+  "only": false,
+  "time": "06:02",
+  "retry": 10,
+  "retryInterval": 2,
+  "delta": 0,
+  "bookOnce": false,
+  "wechatSession": {
+    "autoInject": true,
+    "userObj": "固定字段 - 从微信Cookie中获取的用户对象信息（JSON格式，URL编码）",
+    "school": "固定字段 - 从微信Cookie中获取的学校配置信息（JSON格式，URL编码）",
+    "dinepo": "固定字段 - 从微信Cookie中获取的微信OpenID",
+    "user": "需要定期更新 - 格式: %7B%22userid%22%3A%22学号%22%2C%22access_token%22%3A%22token%22%2C%22expire%22%3A%22过期时间%22%7D",
+    "connectSid": "需要定期更新 - 格式: s%3Asession_id.signature",
+    "redirectUri": ""
+  },
+  "emailNotification": {
+    "enable": false,
+    "smtpHost": "smtp.qq.com",
+    "smtpPort": 465,
+    "username": "your-email@qq.com",
+    "password": "your-auth-code",
+    "recipientEmail": "recipient@example.com",
+    "sslEnable": true
+  }
+}

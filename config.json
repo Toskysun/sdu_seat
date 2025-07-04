@@ -1,0 +1,35 @@
+{
+  "userid": "202323415006",
+  "deviceId": "wechat_device",
+  "area": "趵突泉馆-一楼",
+ "seats": {
+    "趵突泉专业阅览室104": ["011","008","014"],
+    "青岛馆三楼东阅览区": ["001","002","003"],
+    "兴隆山报刊阅览室": ["001","002"]
+  },
+  "filterRule": "",
+  "only": true,
+  "time": "12:30:00.999",
+  "retry": 2,
+  "retryInterval": 1,
+  "delta": 1,
+  "bookOnce": false,
+  "wechatSession": {
+    "userObj": "%7B%22id%22%3A%22202323415006%22%2C%22card%22%3A%222917725%22%2C%22name%22%3A%22%E7%A8%8B%E4%BD%B3%E7%90%A6%22%2C%22idCard%22%3Anull%2C%22gender%22%3A1%2C%22birthday%22%3A%22%22%2C%22joinTime%22%3A%222023-08-29%2008%3A22%3A04%22%2C%22wallet%22%3A%22.0000%22%2C%22saving%22%3A%22.0000%22%2C%22fillScore%22%3A0%2C%22totalFillScore%22%3A0%2C%22consumeScore%22%3A0%2C%22totalConsumeScore%22%3A0%2C%22role%22%3Anull%2C%22roleName%22%3A%22NFC%E6%A0%A1%E5%9B%AD%E5%8D%A1%22%2C%22dept%22%3Anull%2C%22deptName%22%3A%22%E6%9C%AC%E7%A7%91%22%2C%22subDept%22%3Anull%2C%22subDeptName%22%3Anull%2C%22tel%22%3Anull%2C%22mobile%22%3A%2213046460939%22%2C%22email%22%3Anull%2C%22qq%22%3Anull%2C%22status%22%3A1%2C%22weixin%22%3Anull%2C%22hw_update_flag%22%3A0%2C%22skedb_update_flag%22%3A1%2C%22language%22%3Anull%2C%22open_id%22%3Anull%2C%22studyRole%22%3Anull%2C%22isList%22%3Anull%2C%22isQuickSelect%22%3Anull%2C%22lightValue%22%3Anull%2C%22popUp%22%3Anull%2C%22ROW_NUMBER%22%3A%221%22%2C%22renegeinfo%22%3Anull%7D",
+    "school": "%7B%22school%22%3A%22sdu%22%2C%22baseUrl%22%3A%22http%3A%2F%2Fseatwx.lib.sdu.edu.cn%3A85%2Fapi.php%2F%22%2C%22casHost%22%3A%22pass.sdu.edu.cn%2Fcas%22%2C%22casVersion%22%3A%222.0%22%2C%22protocol%22%3A%22https%22%2C%22schoolName%22%3A%22%E5%B1%B1%E4%B8%9C%E5%A4%A7%E5%AD%A6%22%2C%22platformName%22%3A%22%E5%B1%B1%E4%B8%9C%E5%A4%A7%E5%AD%A6%E5%9B%BE%E4%B9%A6%E9%A6%86%E9%A2%84%E7%BA%A6%E7%B3%BB%E7%BB%9F%22%2C%22encodeType%22%3A1%2C%22showQRCode%22%3A1%2C%22authType%22%3A%22cas%22%2C%22enableSeat%22%3A1%2C%22enableRoom%22%3A1%2C%22enableEntrance%22%3A0%2C%22enableViolation%22%3A1%2C%22usernamePlaceholder%22%3A%22%E5%AD%A6%E5%B7%A5%E5%8F%B7%22%2C%22passwordPlaceholder%22%3A%22%E9%BB%98%E8%AE%A4000%22%7D",
+    "dinepo": "o-k7HjtQmaO4tklY9lPGZZG7yA8k",
+    "user": "%7B%22userid%22%3A%22202323415006%22%2C%22access_token%22%3A%227e4d95a4f38d7da76c4b88d3da502ada%22%2C%22expire%22%3A%222025-07-04%2021%3A14%3A33%22%7D",
+    "connectSid": "s%3ArVSUi2X5oTw1LQjasDhkfNwRIR0aXMPP.uBtmqJ2dNJ64T017It8A4xZ%2BkwCAUR3zoBT9JHTrDl0",
+    "autoInject": true,
+    "redirectUri": ""
+  },
+  "emailNotification": {
+    "enable": false,
+    "smtpHost": "smtp.qq.com",
+    "smtpPort": 465,
+    "username": "473560795@qq.com",
+    "password": "iqdercccqsprbhej",
+    "recipientEmail": "3ssa@163.com",
+    "sslEnable": true
+  }
+}
